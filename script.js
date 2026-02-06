@@ -44,6 +44,8 @@ const elements = {
     filterStart: document.getElementById('filterStart'),
     filterEnd: document.getElementById('filterEnd'),
     clearFilterBtn: document.getElementById('clearFilter'),
+    exportBtn: document.getElementById('exportBtn'),
+    deleteAllBtn: document.getElementById('deleteAllBtn'),
     recordsList: document.getElementById('recordsList')
 };
 
@@ -207,6 +209,79 @@ function setupEventListeners() {
         updateRecordsList();
         updateDashboard(); // 也要更新看板
     });
+
+    // 匯出 Excel (CSV)
+    elements.exportBtn.addEventListener('click', exportToCSV);
+
+    // 清空所有紀錄
+    elements.deleteAllBtn.addEventListener('click', deleteAllRecords);
+}
+
+// 匯出 Excel (CSV)
+function exportToCSV() {
+    if (state.records.length === 0) {
+        alert('目前沒有紀錄可匯出');
+        return;
+    }
+
+    // 欄位標題
+    let csvContent = '\uFEFF'; // BOM for UTF-8 in Excel
+    csvContent += '日期,上班時間,下班時間,總工時(小時),扣除休息(分鐘)\n';
+
+    // 排序：日期從小到大 (舊 -> 新)
+    const sortedRecords = [...state.records].sort((a, b) => a.startTime - b.startTime);
+
+    sortedRecords.forEach(record => {
+        const date = new Date(record.startTime);
+        const dateStr = date.toLocaleDateString('zh-TW');
+        const timeStart = new Date(record.startTime).toLocaleTimeString('zh-TW', { hour12: false });
+        const timeEnd = new Date(record.endTime).toLocaleTimeString('zh-TW', { hour12: false });
+        
+        // 取得休息時間
+        let breakDuration = 0;
+        if (record.breakDuration !== undefined) {
+            breakDuration = record.breakDuration;
+        } else if (record.deductBreak) {
+            breakDuration = state.settings.breakTime;
+        }
+
+        // 確保 CSV 格式正確 (處理逗號等)
+        const row = [
+            dateStr,
+            timeStart,
+            timeEnd,
+            record.hours,
+            breakDuration
+        ];
+        
+        csvContent += row.join(',') + '\n';
+    });
+
+    // 建立下載連結
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `工時紀錄_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// 清空所有紀錄
+function deleteAllRecords() {
+    if (state.records.length === 0) return;
+
+    if (confirm('⚠️ 警告：這將會刪除「所有」工時紀錄且無法復原！\n\n確定要清空嗎？')) {
+        // 二次確認
+        if (confirm('再次確認：真的要清空所有紀錄嗎？')) {
+            state.records = [];
+            saveData();
+            updateUI();
+            alert('所有紀錄已清空');
+        }
+    }
 }
 
 // 新增紀錄邏輯
@@ -336,6 +411,10 @@ function updateRecordsList() {
         const endDate = new Date(endStr).setHours(23, 59, 59, 999);
         filteredRecords = filteredRecords.filter(r => r.startTime <= endDate);
     }
+
+    // 排序：日期從小到大 (舊 -> 新)
+    // 複製陣列以避免修改原始資料順序（視需求而定，但複製比較安全）
+    filteredRecords = [...filteredRecords].sort((a, b) => a.startTime - b.startTime);
 
     if (filteredRecords.length === 0) {
         list.innerHTML = '<div class="empty-state">此區間尚無紀錄</div>';

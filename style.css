@@ -334,3 +334,39 @@ button:active {
         justify-content: space-between;
     }
 }
+
+/* Action Bar */
+.action-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.btn-outline:hover {
+    background: rgba(74, 144, 226, 0.1);
+}
+
+.btn-danger-outline {
+    background: transparent;
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.btn-danger-outline:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
