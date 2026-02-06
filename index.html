@@ -18,16 +18,49 @@
 
         <!-- 設定面板 (預設隱藏) -->
         <div id="settingsPanel" class="card hidden">
-            <h3>設定</h3>
-            <div class="form-group">
-                <label for="hourlyWage">時薪 (TWD)</label>
-                <input type="number" id="hourlyWage" value="183">
+            <h3>⚙️ 設定</h3>
+            
+            <div class="settings-section">
+                <h4>基本設定</h4>
+                <div class="form-group">
+                    <label for="hourlyWage">時薪 (TWD)</label>
+                    <input type="number" id="hourlyWage" value="183">
+                </div>
+                <div class="form-group">
+                    <label for="breakTime">預設休息時間 (分鐘)</label>
+                    <input type="number" id="breakTime" value="60">
+                </div>
             </div>
-            <div class="form-group">
-                <label for="breakTime">預設休息時間 (分鐘)</label>
-                <input type="number" id="breakTime" value="60">
+
+            <div class="settings-section">
+                <h4>💾 資料備份與還原</h4>
+                <p class="hint-text">可將資料下載為檔案，在不同瀏覽器或電腦間轉移。</p>
+                <div class="action-buttons-small">
+                    <button id="backupBtn" class="btn-outline">⬇️ 下載備份檔 (.json)</button>
+                    <button id="restoreBtn" class="btn-outline">⬆️ 還原備份檔</button>
+                    <input type="file" id="restoreInput" accept=".json" style="display: none;">
+                </div>
             </div>
-            <button id="saveSettings" class="btn-primary">儲存設定</button>
+
+            <div class="settings-section">
+                <h4>☁️ Google Sheets 同步 (進階)</h4>
+                <p class="hint-text">設定後可跨裝置同步。需至 Google Cloud Console 申請 Client ID。</p>
+                <div class="form-group">
+                    <label>Client ID</label>
+                    <input type="text" id="gClientId" placeholder="請輸入 OAuth 2.0 Client ID">
+                </div>
+                <div class="form-group">
+                    <label>Spreadsheet ID (試算表 ID)</label>
+                    <input type="text" id="gSheetId" placeholder="請輸入 Google 試算表 ID">
+                </div>
+                <div class="action-buttons-small">
+                    <button id="gAuthBtn" class="btn-google">🔗 登入並同步</button>
+                    <button id="gSyncBtn" class="btn-secondary hidden">🔄 立即同步</button>
+                    <div id="gStatus" class="status-text">尚未連結</div>
+                </div>
+            </div>
+
+            <button id="saveSettings" class="btn-primary full-width">儲存設定</button>
         </div>
 
         <!-- 核心功能：打卡區 -->
@@ -140,5 +173,8 @@
     </div>
 
     <script src="script.js"></script>
+    <!-- Google API Scripts -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
 </body>
 </html>

@@ -2,10 +2,20 @@
 let state = {
     settings: {
         hourlyWage: 183,
-        breakTime: 60 // 分鐘
+        breakTime: 60, // 分鐘
+        // Cloud Sync Settings
+        gClientId: '',
+        gSheetId: ''
     },
     records: [],
-    currentSession: null // { startTime: timestamp }
+    currentSession: null, // { startTime: timestamp }
+    // Cloud State
+    cloud: {
+        tokenClient: null,
+        accessToken: null,
+        isGisLoaded: false,
+        isGapiLoaded: false
+    }
 };
 
 // DOM 元素
@@ -16,7 +26,18 @@ const elements = {
     saveSettingsBtn: document.getElementById('saveSettings'),
     hourlyWageInput: document.getElementById('hourlyWage'),
     breakTimeInput: document.getElementById('breakTime'),
-    // breakTimeDisplay removed
+    
+    // 備份還原
+    backupBtn: document.getElementById('backupBtn'),
+    restoreBtn: document.getElementById('restoreBtn'),
+    restoreInput: document.getElementById('restoreInput'),
+    
+    // Google Sync
+    gClientIdInput: document.getElementById('gClientId'),
+    gSheetIdInput: document.getElementById('gSheetId'),
+    gAuthBtn: document.getElementById('gAuthBtn'),
+    gSyncBtn: document.getElementById('gSyncBtn'),
+    gStatus: document.getElementById('gStatus'),
 
     // 打卡
     clockDisplay: document.getElementById('clockDisplay'),
@@ -73,18 +94,62 @@ function init() {
         elements.correctionDate.value = today;
         elements.correctionDate.dispatchEvent(new Event('change'));
     }
+
+    // 初始化 Google API
+    checkGoogleApiLoaded();
+}
+
+function checkGoogleApiLoaded() {
+    // 簡單輪詢檢查 Google Scripts 是否載入完成
+    const interval = setInterval(() => {
+        if (typeof google !== 'undefined' && typeof gapi !== 'undefined') {
+            state.cloud.isGisLoaded = true;
+            state.cloud.isGapiLoaded = true;
+            clearInterval(interval);
+            // 初始化 GIS
+            if (state.settings.gClientId) {
+                initGis();
+                gapi.load('client', initGapiClient);
+            }
+        }
+    }, 500);
+}
+
+function initGis() {
+    state.cloud.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: state.settings.gClientId,
+        scope: 'https://www.googleapis.com/auth/spreadsheets',
+        callback: (tokenResponse) => {
+            state.cloud.accessToken = tokenResponse.access_token;
+            elements.gStatus.textContent = '✅ 已連結 Google';
+            elements.gAuthBtn.classList.add('hidden');
+            elements.gSyncBtn.classList.remove('hidden');
+            syncWithCloud(); // 登入後自動同步
+        },
+    });
+}
+
+async function initGapiClient() {
+    await gapi.client.init({
+        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+    });
 }
 
 // 載入資料
 function loadData() {
     const savedSettings = localStorage.getItem('workSettings');
     if (savedSettings) {
-        state.settings = JSON.parse(savedSettings);
+        const parsed = JSON.parse(savedSettings);
+        state.settings = { ...state.settings, ...parsed }; // 合併新舊設定
+        
         elements.hourlyWageInput.value = state.settings.hourlyWage;
         elements.breakTimeInput.value = state.settings.breakTime;
         if (elements.manualBreakMinutes) {
             elements.manualBreakMinutes.value = state.settings.breakTime;
         }
+        // Cloud Settings
+        if (elements.gClientIdInput) elements.gClientIdInput.value = state.settings.gClientId || '';
+        if (elements.gSheetIdInput) elements.gSheetIdInput.value = state.settings.gSheetId || '';
     }
 
     const savedRecords = localStorage.getItem('workRecords');
@@ -119,6 +184,10 @@ function setupEventListeners() {
     elements.saveSettingsBtn.addEventListener('click', () => {
         state.settings.hourlyWage = parseFloat(elements.hourlyWageInput.value) || 0;
         state.settings.breakTime = parseFloat(elements.breakTimeInput.value) || 0;
+        // Cloud Settings
+        state.settings.gClientId = elements.gClientIdInput.value.trim();
+        state.settings.gSheetId = elements.gSheetIdInput.value.trim();
+        
         if (elements.manualBreakMinutes) {
             elements.manualBreakMinutes.value = state.settings.breakTime;
         }
@@ -126,7 +195,34 @@ function setupEventListeners() {
         updateUI(); // 重新計算薪資
         elements.settingsPanel.classList.add('hidden');
         alert('設定已儲存');
+        
+        // Re-init Google if Client ID changed
+        if (state.settings.gClientId && state.cloud.isGisLoaded) {
+            initGis();
+            gapi.load('client', initGapiClient);
+        }
     });
+
+    // 備份還原
+    elements.backupBtn.addEventListener('click', exportBackup);
+    elements.restoreBtn.addEventListener('click', () => elements.restoreInput.click());
+    elements.restoreInput.addEventListener('change', importBackup);
+    
+    // Google Sync
+    elements.gAuthBtn.addEventListener('click', () => {
+        if (!state.settings.gClientId) {
+            alert('請先輸入 Client ID 並儲存設定');
+            return;
+        }
+        if (state.cloud.tokenClient) {
+            // Force prompt if needed
+            state.cloud.tokenClient.requestAccessToken({prompt: ''});
+        } else {
+            alert('Google API 尚未初始化，請稍候再試');
+        }
+    });
+    
+    elements.gSyncBtn.addEventListener('click', syncWithCloud);
 
     // 打卡相關
     elements.clockInBtn.addEventListener('click', () => {
@@ -327,6 +423,136 @@ function setupEventListeners() {
 
     // 清空所有紀錄
     elements.deleteAllBtn.addEventListener('click', deleteAllRecords);
+}
+
+// 備份還原邏輯
+function exportBackup() {
+    const backupData = {
+        settings: state.settings,
+        records: state.records,
+        timestamp: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `work_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function importBackup(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            if (data.records && Array.isArray(data.records)) {
+                if (confirm(`確定要還原 ${data.records.length} 筆紀錄嗎？這將會覆蓋現有設定。`)) {
+                    state.settings = { ...state.settings, ...data.settings };
+                    state.records = data.records;
+                    saveData();
+                    updateUI();
+                    loadData(); // Reload input fields
+                    alert('還原成功！');
+                }
+            } else {
+                alert('備份檔案格式錯誤');
+            }
+        } catch (err) {
+            alert('無法讀取檔案');
+            console.error(err);
+        }
+        elements.restoreInput.value = ''; // Reset
+    };
+    reader.readAsText(file);
+}
+
+// Google Sheets Sync Logic
+async function syncWithCloud() {
+    if (!state.settings.gSheetId) {
+        alert('請先輸入 Spreadsheet ID');
+        return;
+    }
+    
+    elements.gStatus.textContent = '⏳ 同步中...';
+    
+    try {
+        // 1. 讀取 Cloud 資料
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: state.settings.gSheetId,
+            range: 'Sheet1!A:F', // 假設資料在 Sheet1
+        });
+        
+        const rows = response.result.values;
+        let cloudRecords = [];
+        
+        if (rows && rows.length > 1) {
+            // 解析 Rows (跳過 Header)
+            // 格式: ID, StartTime, EndTime, Break, Deduct, Hours
+            // 注意: 我們需要一個唯一 ID 來避免重複。如果沒有，用 StartTime 當 key
+            rows.slice(1).forEach(row => {
+                if (row[1] && row[2]) {
+                    cloudRecords.push({
+                        startTime: parseInt(row[1]),
+                        endTime: parseInt(row[2]),
+                        breakDuration: parseFloat(row[3]) || 0,
+                        deductBreak: row[4] === 'TRUE',
+                        hours: row[5],
+                        // Re-calculate derived fields if needed
+                        totalMinutes: Math.floor((parseInt(row[2]) - parseInt(row[1])) / 60000) - (parseFloat(row[3]) || 0)
+                    });
+                }
+            });
+        }
+        
+        // 2. 合併資料 (簡單策略: 聯集，以 StartTime 為 Unique Key)
+        const recordMap = new Map();
+        
+        // 先放 Cloud (Cloud 為主? 還是 Local 為主? 這裡假設兩邊都保留)
+        cloudRecords.forEach(r => recordMap.set(r.startTime, r));
+        // 再放 Local (如果 Local 有修改，覆蓋 Cloud? 這裡假設 Local 較新)
+        state.records.forEach(r => recordMap.set(r.startTime, r));
+        
+        const mergedRecords = Array.from(recordMap.values()).sort((a, b) => a.startTime - b.startTime);
+        state.records = mergedRecords;
+        
+        // 3. 寫回 Cloud (全量覆蓋比較安全)
+        const header = ['ID (Ignored)', 'StartTime (Timestamp)', 'EndTime (Timestamp)', 'Break (Min)', 'DeductBreak', 'Hours'];
+        const writeRows = [header];
+        
+        mergedRecords.forEach(r => {
+            writeRows.push([
+                new Date(r.startTime).toISOString(), // A: Readable Time for ID ref
+                r.startTime.toString(),              // B
+                r.endTime.toString(),                // C
+                (r.breakDuration || 0).toString(),   // D
+                r.deductBreak ? 'TRUE' : 'FALSE',    // E
+                r.hours.toString()                   // F
+            ]);
+        });
+        
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: state.settings.gSheetId,
+            range: 'Sheet1!A:F',
+            valueInputOption: 'RAW',
+            resource: { values: writeRows }
+        });
+        
+        saveData();
+        updateUI();
+        elements.gStatus.textContent = `✅ 同步完成 (${new Date().toLocaleTimeString()})`;
+        
+    } catch (err) {
+        console.error('Sync failed', err);
+        elements.gStatus.textContent = '❌ 同步失敗: ' + (err.result?.error?.message || err.message);
+        if (err.status === 401 || err.status === 403) {
+            elements.gAuthBtn.classList.remove('hidden');
+            elements.gSyncBtn.classList.add('hidden');
+        }
+    }
 }
 
 // 匯出 Excel (CSV)
