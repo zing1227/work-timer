@@ -34,11 +34,23 @@
 
             <div class="settings-section">
                 <h4>💾 資料備份與還原</h4>
-                <p class="hint-text">可將資料下載為檔案，在不同瀏覽器或電腦間轉移。</p>
+                <p class="hint-text">可將資料下載為檔案，或使用「文字代碼」在手機間轉移。</p>
                 <div class="action-buttons-small">
-                    <button id="backupBtn" class="btn-outline">⬇️ 下載備份檔 (.json)</button>
+                    <button id="backupBtn" class="btn-outline">⬇️ 下載備份檔</button>
                     <button id="restoreBtn" class="btn-outline">⬆️ 還原備份檔</button>
                     <input type="file" id="restoreInput" accept=".json" style="display: none;">
+                </div>
+                
+                <!-- 手機版文字備份 -->
+                <div style="margin-top: 15px;">
+                    <button id="toggleTextBackupBtn" class="btn-text" style="font-size: 0.9rem;">📱 手機版專用：文字備份/還原</button>
+                    <div id="textBackupArea" style="display: none; margin-top: 10px;">
+                        <textarea id="backupTextarea" rows="5" placeholder="備份代碼將顯示於此，或在此貼上代碼以還原..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; font-size: 0.8rem;"></textarea>
+                        <div class="action-buttons-small" style="margin-top: 5px;">
+                            <button id="copyTextBtn" class="btn-small">📋 複製代碼</button>
+                            <button id="importTextBtn" class="btn-secondary">📥 從文字還原</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

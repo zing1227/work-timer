@@ -31,6 +31,12 @@ const elements = {
     backupBtn: document.getElementById('backupBtn'),
     restoreBtn: document.getElementById('restoreBtn'),
     restoreInput: document.getElementById('restoreInput'),
+    // 文字備份
+    toggleTextBackupBtn: document.getElementById('toggleTextBackupBtn'),
+    textBackupArea: document.getElementById('textBackupArea'),
+    backupTextarea: document.getElementById('backupTextarea'),
+    copyTextBtn: document.getElementById('copyTextBtn'),
+    importTextBtn: document.getElementById('importTextBtn'),
     
     // Google Sync
     gClientIdInput: document.getElementById('gClientId'),
@@ -208,6 +214,56 @@ function setupEventListeners() {
     elements.restoreBtn.addEventListener('click', () => elements.restoreInput.click());
     elements.restoreInput.addEventListener('change', importBackup);
     
+    // 文字備份相關
+    if (elements.toggleTextBackupBtn) {
+        elements.toggleTextBackupBtn.addEventListener('click', () => {
+            if (elements.textBackupArea.style.display === 'none') {
+                elements.textBackupArea.style.display = 'block';
+                // 自動產生備份文字
+                const backupData = {
+                    settings: state.settings,
+                    records: state.records,
+                    timestamp: new Date().toISOString()
+                };
+                elements.backupTextarea.value = JSON.stringify(backupData, null, 2);
+            } else {
+                elements.textBackupArea.style.display = 'none';
+            }
+        });
+
+        elements.copyTextBtn.addEventListener('click', () => {
+            elements.backupTextarea.select();
+            document.execCommand('copy');
+            alert('✅ 代碼已複製！請貼到另一台裝置的相同欄位中。');
+        });
+
+        elements.importTextBtn.addEventListener('click', () => {
+            const text = elements.backupTextarea.value.trim();
+            if (!text) {
+                alert('請先貼上備份代碼');
+                return;
+            }
+            try {
+                const data = JSON.parse(text);
+                if (data.records && Array.isArray(data.records)) {
+                    if (confirm(`確定要從文字代碼還原 ${data.records.length} 筆紀錄嗎？這將會覆蓋現有設定。`)) {
+                        state.settings = { ...state.settings, ...data.settings };
+                        state.records = data.records;
+                        saveData();
+                        updateUI();
+                        loadData(); 
+                        alert('還原成功！');
+                        elements.textBackupArea.style.display = 'none';
+                    }
+                } else {
+                    alert('代碼格式錯誤');
+                }
+            } catch (err) {
+                alert('無效的 JSON 代碼');
+            }
+        });
+    }
+
     // Google Sync
     elements.gAuthBtn.addEventListener('click', () => {
         if (!state.settings.gClientId) {
