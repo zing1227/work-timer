@@ -1,0 +1,336 @@
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #50e3c2;
+    --danger-color: #e74c3c;
+    --text-color: #333;
+    --bg-color: #f5f7fa;
+    --card-bg: #ffffff;
+    --border-radius: 12px;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --font-family: 'Roboto', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+h3 {
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.hidden {
+    display: none;
+}
+
+/* 按鈕樣式 */
+button {
+    cursor: pointer;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    transition: background 0.2s, transform 0.1s;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    width: 100%;
+    font-size: 1rem;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    width: 100%;
+    font-size: 1rem;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    background-color: #e0e0e0;
+}
+
+.btn-text {
+    background: none;
+    color: var(--primary-color);
+    text-decoration: underline;
+    font-size: 0.9rem;
+}
+
+#settingsBtn {
+    background: none;
+    font-size: 1.2rem;
+}
+
+/* 設定面板 */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input[type="number"],
+.form-group input[type="date"],
+.form-group input[type="time"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+/* 打卡區 */
+.main-action {
+    text-align: center;
+}
+
+.clock {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.date-display {
+    color: #777;
+    margin-bottom: 20px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.btn-large {
+    flex: 1;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: white;
+}
+
+.btn-large.start {
+    background-color: var(--primary-color);
+}
+
+.btn-large.end {
+    background-color: var(--danger-color);
+}
+
+.btn-large:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.manual-entry-toggle {
+    margin-top: 10px;
+}
+
+.manual-form {
+    margin-top: 20px;
+    text-align: left;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checkbox-group input {
+    width: auto;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    font-weight: normal;
+}
+
+/* 統計看板 */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+.stat-card h4 {
+    font-size: 0.8rem;
+    color: #777;
+    margin-bottom: 5px;
+}
+
+.stat-card .value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* 歷史紀錄 */
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+}
+
+.filter-controls input {
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.records-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.record-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.record-item:last-child {
+    border-bottom: none;
+}
+
+.record-info {
+    flex: 1;
+}
+
+.record-date {
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.record-time {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.record-hours {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-left: 10px;
+}
+
+.record-delete {
+    color: #999;
+    background: none;
+    padding: 5px;
+    margin-left: 10px;
+    font-size: 1.2rem;
+}
+
+.record-delete:hover {
+    color: var(--danger-color);
+}
+
+.empty-state {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+}
+
+/* RWD */
+@media (max-width: 480px) {
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .history-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filter-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

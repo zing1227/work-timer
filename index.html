@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工時計算 App</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>工時計算器</h1>
+            <div class="settings-toggle">
+                <button id="settingsBtn">⚙️ 設定</button>
+            </div>
+        </header>
+
+        <!-- 設定面板 (預設隱藏) -->
+        <div id="settingsPanel" class="card hidden">
+            <h3>設定</h3>
+            <div class="form-group">
+                <label for="hourlyWage">時薪 (TWD)</label>
+                <input type="number" id="hourlyWage" value="183">
+            </div>
+            <div class="form-group">
+                <label for="breakTime">預設休息時間 (分鐘)</label>
+                <input type="number" id="breakTime" value="60">
+            </div>
+            <button id="saveSettings" class="btn-primary">儲存設定</button>
+        </div>
+
+        <!-- 核心功能：打卡區 -->
+        <div class="card main-action">
+            <div id="clockDisplay" class="clock">00:00:00</div>
+            <div class="date-display" id="dateDisplay">YYYY-MM-DD</div>
+            
+            <div class="action-buttons">
+                <button id="clockInBtn" class="btn-large start">上班打卡</button>
+                <button id="clockOutBtn" class="btn-large end" disabled>下班打卡</button>
+            </div>
+            
+            <div class="manual-entry-toggle">
+                <button id="toggleManualBtn" class="btn-text">或 手動輸入時數</button>
+            </div>
+
+            <div id="manualEntryForm" class="hidden manual-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>日期</label>
+                        <input type="date" id="manualDate">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>上班時間</label>
+                        <input type="time" id="manualStartTime">
+                    </div>
+                    <div class="form-group">
+                        <label>下班時間</label>
+                        <input type="time" id="manualEndTime">
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="manualBreak" checked>
+                    <label for="manualBreak">扣除休息</label>
+                    <input type="number" id="manualBreakMinutes" value="60" min="0" style="width: 60px; margin: 0 5px;">
+                    <span>分鐘</span>
+                </div>
+                <button id="addManualRecord" class="btn-secondary">新增紀錄</button>
+            </div>
+        </div>
+
+        <!-- 統計看板 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <h4>今日時數</h4>
+                <div class="value" id="todayHours">0.0</div>
+            </div>
+            <div class="stat-card">
+                <h4>本月累積</h4>
+                <div class="value" id="monthHours">0.0</div>
+            </div>
+            <div class="stat-card">
+                <h4>區間總計</h4>
+                <div class="value" id="rangeHours">0.0</div>
+            </div>
+            <div class="stat-card">
+                <h4>預估薪資</h4>
+                <div class="value" id="monthSalary">$0</div>
+            </div>
+        </div>
+
+        <!-- 歷史紀錄與篩選 -->
+        <div class="card history-section">
+            <div class="history-header">
+                <h3>工時紀錄</h3>
+                <div class="filter-controls">
+                    <input type="date" id="filterStart">
+                    <span>至</span>
+                    <input type="date" id="filterEnd">
+                    <button id="clearFilter" class="btn-small">重置</button>
+                </div>
+            </div>
+            
+            <div class="records-list" id="recordsList">
+                <!-- 紀錄項目將由 JS 生成 -->
+                <div class="empty-state">尚無紀錄</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

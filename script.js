@@ -1,0 +1,401 @@
+// 狀態管理
+let state = {
+    settings: {
+        hourlyWage: 183,
+        breakTime: 60 // 分鐘
+    },
+    records: [],
+    currentSession: null // { startTime: timestamp }
+};
+
+// DOM 元素
+const elements = {
+    // 設定
+    settingsBtn: document.getElementById('settingsBtn'),
+    settingsPanel: document.getElementById('settingsPanel'),
+    saveSettingsBtn: document.getElementById('saveSettings'),
+    hourlyWageInput: document.getElementById('hourlyWage'),
+    breakTimeInput: document.getElementById('breakTime'),
+    // breakTimeDisplay removed
+
+    // 打卡
+    clockDisplay: document.getElementById('clockDisplay'),
+    dateDisplay: document.getElementById('dateDisplay'),
+    clockInBtn: document.getElementById('clockInBtn'),
+    clockOutBtn: document.getElementById('clockOutBtn'),
+
+    // 手動輸入
+    toggleManualBtn: document.getElementById('toggleManualBtn'),
+    manualEntryForm: document.getElementById('manualEntryForm'),
+    manualDate: document.getElementById('manualDate'),
+    manualStartTime: document.getElementById('manualStartTime'),
+    manualEndTime: document.getElementById('manualEndTime'),
+    manualBreak: document.getElementById('manualBreak'),
+    manualBreakMinutes: document.getElementById('manualBreakMinutes'),
+    addManualRecordBtn: document.getElementById('addManualRecord'),
+
+    // 統計
+    todayHours: document.getElementById('todayHours'),
+    monthHours: document.getElementById('monthHours'),
+    rangeHours: document.getElementById('rangeHours'),
+    monthSalary: document.getElementById('monthSalary'),
+
+    // 歷史紀錄
+    filterStart: document.getElementById('filterStart'),
+    filterEnd: document.getElementById('filterEnd'),
+    clearFilterBtn: document.getElementById('clearFilter'),
+    recordsList: document.getElementById('recordsList')
+};
+
+// 初始化
+function init() {
+    loadData();
+    setupEventListeners();
+    startClock();
+    updateUI();
+    
+    // 設定預設日期為今天
+    const today = new Date().toISOString().split('T')[0];
+    elements.manualDate.value = today;
+}
+
+// 載入資料
+function loadData() {
+    const savedSettings = localStorage.getItem('workSettings');
+    if (savedSettings) {
+        state.settings = JSON.parse(savedSettings);
+        elements.hourlyWageInput.value = state.settings.hourlyWage;
+        elements.breakTimeInput.value = state.settings.breakTime;
+        if (elements.manualBreakMinutes) {
+            elements.manualBreakMinutes.value = state.settings.breakTime;
+        }
+    }
+
+    const savedRecords = localStorage.getItem('workRecords');
+    if (savedRecords) {
+        state.records = JSON.parse(savedRecords);
+    }
+
+    const savedSession = localStorage.getItem('currentSession');
+    if (savedSession) {
+        state.currentSession = JSON.parse(savedSession);
+    }
+}
+
+// 儲存資料
+function saveData() {
+    localStorage.setItem('workSettings', JSON.stringify(state.settings));
+    localStorage.setItem('workRecords', JSON.stringify(state.records));
+    if (state.currentSession) {
+        localStorage.setItem('currentSession', JSON.stringify(state.currentSession));
+    } else {
+        localStorage.removeItem('currentSession');
+    }
+}
+
+// 事件監聽
+function setupEventListeners() {
+    // 設定相關
+    elements.settingsBtn.addEventListener('click', () => {
+        elements.settingsPanel.classList.toggle('hidden');
+    });
+
+    elements.saveSettingsBtn.addEventListener('click', () => {
+        state.settings.hourlyWage = parseFloat(elements.hourlyWageInput.value) || 0;
+        state.settings.breakTime = parseFloat(elements.breakTimeInput.value) || 0;
+        if (elements.manualBreakMinutes) {
+            elements.manualBreakMinutes.value = state.settings.breakTime;
+        }
+        saveData();
+        updateUI(); // 重新計算薪資
+        elements.settingsPanel.classList.add('hidden');
+        alert('設定已儲存');
+    });
+
+    // 打卡相關
+    elements.clockInBtn.addEventListener('click', () => {
+        const now = new Date();
+        state.currentSession = {
+            startTime: now.getTime()
+        };
+        saveData();
+        updateUI();
+    });
+
+    elements.clockOutBtn.addEventListener('click', () => {
+        if (!state.currentSession) return;
+        
+        const now = new Date();
+        const endTime = now.getTime();
+        const startTime = state.currentSession.startTime;
+        
+        // 計算總分鐘數
+        const diffMs = endTime - startTime;
+        const diffMinutes = Math.floor(diffMs / 60000);
+        
+        // 詢問是否扣除休息時間 (如果工作時間超過設定的休息時間)
+        let deductBreak = false;
+        if (diffMinutes > state.settings.breakTime) {
+            deductBreak = confirm(`工作時長為 ${formatDuration(diffMinutes)}。\n是否扣除休息時間 ${state.settings.breakTime} 分鐘？`);
+        }
+
+        addRecord({
+            startTime: startTime,
+            endTime: endTime,
+            deductBreak: deductBreak
+        });
+
+        state.currentSession = null;
+        saveData();
+        updateUI();
+    });
+
+    // 手動輸入相關
+    elements.toggleManualBtn.addEventListener('click', () => {
+        elements.manualEntryForm.classList.toggle('hidden');
+    });
+
+    elements.manualBreak.addEventListener('change', (e) => {
+        elements.manualBreakMinutes.disabled = !e.target.checked;
+    });
+
+    elements.addManualRecordBtn.addEventListener('click', () => {
+        const dateStr = elements.manualDate.value;
+        const startStr = elements.manualStartTime.value;
+        const endStr = elements.manualEndTime.value;
+        const deductBreak = elements.manualBreak.checked;
+        const breakMinutes = parseFloat(elements.manualBreakMinutes.value) || 0;
+
+        if (!dateStr || !startStr || !endStr) {
+            alert('請完整填寫日期與時間');
+            return;
+        }
+
+        const startTime = new Date(`${dateStr}T${startStr}`).getTime();
+        const endTime = new Date(`${dateStr}T${endStr}`).getTime();
+
+        if (endTime <= startTime) {
+            alert('下班時間必須晚於上班時間');
+            return;
+        }
+
+        addRecord({
+            startTime: startTime,
+            endTime: endTime,
+            deductBreak: deductBreak,
+            breakDuration: deductBreak ? breakMinutes : 0
+        });
+
+        // 重置表單
+        elements.manualStartTime.value = '';
+        elements.manualEndTime.value = '';
+        // Reset break minutes to default
+        elements.manualBreakMinutes.value = state.settings.breakTime;
+        elements.manualBreak.checked = true;
+        
+        elements.manualEntryForm.classList.add('hidden');
+        saveData();
+        updateUI();
+    });
+
+    // 篩選相關
+    elements.filterStart.addEventListener('change', updateRecordsList);
+    elements.filterEnd.addEventListener('change', updateRecordsList);
+    elements.clearFilterBtn.addEventListener('click', () => {
+        elements.filterStart.value = '';
+        elements.filterEnd.value = '';
+        updateRecordsList();
+        updateDashboard(); // 也要更新看板
+    });
+}
+
+// 新增紀錄邏輯
+function addRecord(data) {
+    const diffMs = data.endTime - data.startTime;
+    let totalMinutes = Math.floor(diffMs / 60000);
+    
+    let breakTime = 0;
+    if (data.breakDuration !== undefined) {
+        breakTime = data.breakDuration;
+    } else if (data.deductBreak) {
+        breakTime = state.settings.breakTime;
+    }
+
+    if (breakTime > 0) {
+        totalMinutes = Math.max(0, totalMinutes - breakTime);
+    }
+
+    const hours = parseFloat((totalMinutes / 60).toFixed(2));
+    
+    const record = {
+        id: Date.now(),
+        startTime: data.startTime,
+        endTime: data.endTime,
+        deductBreak: breakTime > 0, // Ensure consistency
+        breakDuration: breakTime,   // Store actual break duration for reference
+        hours: hours,
+        minutes: totalMinutes // Store exact minutes
+    };
+
+    state.records.unshift(record); // 新的在最前面
+}
+
+// 時鐘功能
+function startClock() {
+    function update() {
+        const now = new Date();
+        elements.clockDisplay.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+        elements.dateDisplay.textContent = now.toLocaleDateString('zh-TW', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric', 
+            weekday: 'long' 
+        });
+    }
+    update();
+    setInterval(update, 1000);
+}
+
+// UI 更新總入口
+function updateUI() {
+    updateButtons();
+    updateDashboard();
+    updateRecordsList();
+}
+
+// 更新按鈕狀態
+function updateButtons() {
+    if (state.currentSession) {
+        elements.clockInBtn.disabled = true;
+        elements.clockOutBtn.disabled = false;
+        elements.clockInBtn.textContent = `工作中 (${new Date(state.currentSession.startTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'})} 開始)`;
+    } else {
+        elements.clockInBtn.disabled = false;
+        elements.clockOutBtn.disabled = true;
+        elements.clockInBtn.textContent = '上班打卡';
+    }
+}
+
+// 更新統計看板
+function updateDashboard() {
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // 取得當前篩選範圍內的紀錄（如果沒有篩選，預設顯示全部或當月？）
+    // 這裡邏輯：
+    // 1. 今日時數：只看今天
+    // 2. 本月累積：只看這個月
+    // 3. 預估薪資：基於本月累積
+
+    let todayTotal = 0;
+    let monthTotal = 0;
+
+    // 若有篩選日期，看板也可以顯示篩選區間的總和？
+    // 根據需求： "統計看板：顯示當日時數、自選日期區間總時數、以及當月累計時數與總薪資。"
+    // 這裡我們簡化，顯示今日和本月，另外可以加一個「區間總計」如果篩選器有值。
+    
+    // 計算今日和本月
+    state.records.forEach(record => {
+        const recordDate = new Date(record.startTime);
+        
+        // 今日
+        if (recordDate.toDateString() === todayStr) {
+            todayTotal += record.hours;
+        }
+
+        // 本月
+        if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
+            monthTotal += record.hours;
+        }
+    });
+
+    elements.todayHours.textContent = todayTotal.toFixed(1);
+    elements.monthHours.textContent = monthTotal.toFixed(1);
+    
+    const salary = Math.round(monthTotal * state.settings.hourlyWage);
+    elements.monthSalary.textContent = `$${salary.toLocaleString()}`;
+}
+
+// 更新紀錄列表
+function updateRecordsList() {
+    const list = elements.recordsList;
+    list.innerHTML = '';
+
+    // 篩選
+    let filteredRecords = state.records;
+    const startStr = elements.filterStart.value;
+    const endStr = elements.filterEnd.value;
+
+    if (startStr) {
+        const startDate = new Date(startStr).getTime();
+        filteredRecords = filteredRecords.filter(r => r.startTime >= startDate);
+    }
+    if (endStr) {
+        const endDate = new Date(endStr).setHours(23, 59, 59, 999);
+        filteredRecords = filteredRecords.filter(r => r.startTime <= endDate);
+    }
+
+    if (filteredRecords.length === 0) {
+        list.innerHTML = '<div class="empty-state">此區間尚無紀錄</div>';
+        // Update range total to 0 even if no records
+        elements.rangeHours.textContent = "0.0";
+        return;
+    }
+
+    let rangeTotalMinutes = 0;
+
+    filteredRecords.forEach(record => {
+        // Calculate total minutes for the filtered range
+        const rMinutes = record.minutes !== undefined ? record.minutes : Math.round(record.hours * 60);
+        rangeTotalMinutes += rMinutes;
+
+        const date = new Date(record.startTime);
+        const dateStr = date.toLocaleDateString('zh-TW');
+        const timeStart = new Date(record.startTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        const timeEnd = new Date(record.endTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        
+        // Use stored minutes if available, otherwise calculate from hours (backward compatibility)
+        const displayMinutes = record.minutes !== undefined ? record.minutes : Math.round(record.hours * 60);
+        const durationStr = formatDuration(displayMinutes);
+
+        const item = document.createElement('div');
+        item.className = 'record-item';
+        item.innerHTML = `
+            <div class="record-info">
+                <div class="record-date">${dateStr}</div>
+                <div class="record-time">
+                    ${timeStart} - ${timeEnd} 
+                    ${record.deductBreak ? '<span style="font-size:0.8em; color:#888;">(含休)</span>' : ''}
+                </div>
+            </div>
+            <div class="record-hours">${durationStr}</div>
+            <button class="record-delete" onclick="deleteRecord(${record.id})">&times;</button>
+        `;
+        list.appendChild(item);
+    });
+
+    // Update range hours display
+    const rangeHours = parseFloat((rangeTotalMinutes / 60).toFixed(2));
+    elements.rangeHours.textContent = rangeHours.toFixed(1);
+}
+
+// 刪除紀錄
+window.deleteRecord = function(id) {
+    if (confirm('確定要刪除這筆紀錄嗎？')) {
+        state.records = state.records.filter(r => r.id !== id);
+        saveData();
+        updateUI();
+    }
+};
+
+// 輔助函式：格式化分鐘數為 "X小時Y分"
+function formatDuration(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h}小時${m}分`;
+}
+
+// 啟動 App
+init();
