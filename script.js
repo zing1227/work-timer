@@ -36,6 +36,7 @@ const elements = {
     textBackupArea: document.getElementById('textBackupArea'),
     backupTextarea: document.getElementById('backupTextarea'),
     copyTextBtn: document.getElementById('copyTextBtn'),
+    shareTextBtn: document.getElementById('shareTextBtn'),
     importTextBtn: document.getElementById('importTextBtn'),
     
     // Google Sync
@@ -226,15 +227,60 @@ function setupEventListeners() {
                     timestamp: new Date().toISOString()
                 };
                 elements.backupTextarea.value = JSON.stringify(backupData, null, 2);
+                
+                // 檢查是否支援分享 API
+                if (navigator.share) {
+                    elements.shareTextBtn.style.display = 'inline-block';
+                }
             } else {
                 elements.textBackupArea.style.display = 'none';
             }
         });
 
         elements.copyTextBtn.addEventListener('click', () => {
+            const text = elements.backupTextarea.value;
+            if (!text) return;
+            
+            // 嘗試使用 Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => alert('✅ 已複製到剪貼簿'))
+                    .catch(err => {
+                        console.error('Clipboard failed', err);
+                        fallbackCopyText();
+                    });
+            } else {
+                fallbackCopyText();
+            }
+        });
+        
+        function fallbackCopyText() {
             elements.backupTextarea.select();
-            document.execCommand('copy');
-            alert('✅ 代碼已複製！請貼到另一台裝置的相同欄位中。');
+            elements.backupTextarea.setSelectionRange(0, 99999); // For mobile
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('✅ 已複製到剪貼簿');
+                } else {
+                    alert('❌ 自動複製失敗，請長按文字框手動複製');
+                }
+            } catch (err) {
+                alert('❌ 自動複製失敗，請長按文字框手動複製');
+            }
+        }
+        
+        elements.shareTextBtn.addEventListener('click', async () => {
+            const text = elements.backupTextarea.value;
+            if (!text) return;
+            
+            try {
+                await navigator.share({
+                    title: '工時紀錄備份',
+                    text: text
+                });
+            } catch (err) {
+                console.log('Share failed or canceled', err);
+            }
         });
 
         elements.importTextBtn.addEventListener('click', () => {
