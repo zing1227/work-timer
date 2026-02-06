@@ -67,6 +67,12 @@ function init() {
     // 設定預設日期為今天
     const today = new Date().toISOString().split('T')[0];
     elements.manualDate.value = today;
+    
+    // 初始化補登日期的預設值並觸發查詢
+    if (elements.correctionDate) {
+        elements.correctionDate.value = today;
+        elements.correctionDate.dispatchEvent(new Event('change'));
+    }
 }
 
 // 載入資料
@@ -161,6 +167,7 @@ function setupEventListeners() {
     });
 
     // 手動輸入相關
+    /* 移除顯示切換邏輯
     elements.toggleManualBtn.addEventListener('click', () => {
         const form = elements.manualEntryForm;
         if (form.style.display === 'none') {
@@ -169,6 +176,7 @@ function setupEventListeners() {
             form.style.display = 'none';
         }
     });
+    */
 
     elements.manualBreak.addEventListener('change', (e) => {
         elements.manualBreakMinutes.disabled = !e.target.checked;
@@ -208,12 +216,13 @@ function setupEventListeners() {
         elements.manualBreakMinutes.value = state.settings.breakTime;
         elements.manualBreak.checked = true;
         
-        elements.manualEntryForm.style.display = 'none';
+        // elements.manualEntryForm.style.display = 'none'; // 保持顯示
         saveData();
         updateUI();
     });
 
     // 補登/修改休息時間相關
+    /* 移除顯示切換邏輯
     elements.toggleCorrectionBtn.addEventListener('click', () => {
         const form = elements.correctionForm;
         if (form.style.display === 'none') {
@@ -224,6 +233,7 @@ function setupEventListeners() {
             form.style.display = 'none';
         }
     });
+    */
 
     elements.correctionDate.addEventListener('change', () => {
         const dateStr = elements.correctionDate.value;
