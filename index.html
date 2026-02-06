@@ -40,11 +40,15 @@
                 <button id="clockOutBtn" class="btn-large end" disabled>下班打卡</button>
             </div>
             
-            <div class="manual-entry-toggle">
-                <button id="toggleManualBtn" class="btn-text">或 手動輸入時數</button>
-            </div>
+        </div>
 
-            <div id="manualEntryForm" class="hidden manual-form">
+        <!-- 手動輸入/補登 -->
+        <div class="card">
+            <div class="card-header" id="toggleManualBtn">
+                <h3>📝 手動新增紀錄</h3>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="card-body" id="manualEntryForm" style="display: none;">
                 <div class="form-row">
                     <div class="form-group">
                         <label>日期</label>
@@ -68,6 +72,28 @@
                     <span>分鐘</span>
                 </div>
                 <button id="addManualRecord" class="btn-secondary">新增紀錄</button>
+            </div>
+        </div>
+
+        <!-- 補登休息時間 -->
+        <div class="card">
+            <div class="card-header" id="toggleCorrectionBtn">
+                <h3>🛠️ 補登/修改休息時間</h3>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="card-body" id="correctionForm" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>選擇日期</label>
+                        <input type="date" id="correctionDate">
+                    </div>
+                    <div class="form-group">
+                        <label>新休息時間 (分鐘)</label>
+                        <input type="number" id="correctionBreakMinutes" min="0" placeholder="輸入分鐘數">
+                    </div>
+                </div>
+                <div id="correctionStatus" style="margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9rem;"></div>
+                <button id="updateBreakBtn" class="btn-secondary">更新紀錄</button>
             </div>
         </div>
 

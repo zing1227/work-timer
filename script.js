@@ -34,6 +34,14 @@ const elements = {
     manualBreakMinutes: document.getElementById('manualBreakMinutes'),
     addManualRecordBtn: document.getElementById('addManualRecord'),
 
+    // 補登/修改休息時間
+    toggleCorrectionBtn: document.getElementById('toggleCorrectionBtn'),
+    correctionForm: document.getElementById('correctionForm'),
+    correctionDate: document.getElementById('correctionDate'),
+    correctionBreakMinutes: document.getElementById('correctionBreakMinutes'),
+    correctionStatus: document.getElementById('correctionStatus'),
+    updateBreakBtn: document.getElementById('updateBreakBtn'),
+
     // 統計
     todayHours: document.getElementById('todayHours'),
     monthHours: document.getElementById('monthHours'),
@@ -154,7 +162,12 @@ function setupEventListeners() {
 
     // 手動輸入相關
     elements.toggleManualBtn.addEventListener('click', () => {
-        elements.manualEntryForm.classList.toggle('hidden');
+        const form = elements.manualEntryForm;
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+        }
     });
 
     elements.manualBreak.addEventListener('change', (e) => {
@@ -195,9 +208,98 @@ function setupEventListeners() {
         elements.manualBreakMinutes.value = state.settings.breakTime;
         elements.manualBreak.checked = true;
         
-        elements.manualEntryForm.classList.add('hidden');
+        elements.manualEntryForm.style.display = 'none';
         saveData();
         updateUI();
+    });
+
+    // 補登/修改休息時間相關
+    elements.toggleCorrectionBtn.addEventListener('click', () => {
+        const form = elements.correctionForm;
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+            elements.correctionDate.value = new Date().toISOString().split('T')[0];
+            elements.correctionDate.dispatchEvent(new Event('change'));
+        } else {
+            form.style.display = 'none';
+        }
+    });
+
+    elements.correctionDate.addEventListener('change', () => {
+        const dateStr = elements.correctionDate.value;
+        if (!dateStr) return;
+
+        const targetDate = new Date(dateStr);
+        const startOfDay = targetDate.setHours(0, 0, 0, 0);
+        const endOfDay = targetDate.setHours(23, 59, 59, 999);
+
+        const records = state.records.filter(r => r.startTime >= startOfDay && r.startTime <= endOfDay);
+
+        if (records.length === 0) {
+            elements.correctionStatus.textContent = '❌ 查無此日期的工時紀錄';
+            elements.correctionStatus.style.color = 'var(--danger-color)';
+            elements.updateBreakBtn.disabled = true;
+            elements.correctionBreakMinutes.value = '';
+        } else {
+            const count = records.length;
+            // 嘗試取得目前的休息時間（優先取 breakDuration，若無則看 settings）
+            let currentBreak = 0;
+            if (records[0].breakDuration !== undefined) {
+                currentBreak = records[0].breakDuration;
+            } else if (records[0].deductBreak) {
+                currentBreak = state.settings.breakTime;
+            }
+            
+            elements.correctionStatus.textContent = `✅ 找到 ${count} 筆紀錄。目前第一筆休息時間: ${currentBreak} 分鐘`;
+            elements.correctionStatus.style.color = 'var(--primary-color)';
+            elements.updateBreakBtn.disabled = false;
+            elements.correctionBreakMinutes.value = currentBreak;
+        }
+    });
+
+    elements.updateBreakBtn.addEventListener('click', () => {
+        const dateStr = elements.correctionDate.value;
+        const newBreak = parseFloat(elements.correctionBreakMinutes.value);
+
+        if (isNaN(newBreak) || newBreak < 0) {
+            alert('請輸入有效的休息時間（分鐘）');
+            return;
+        }
+
+        const targetDate = new Date(dateStr);
+        const startOfDay = targetDate.setHours(0, 0, 0, 0);
+        const endOfDay = targetDate.setHours(23, 59, 59, 999);
+
+        let updatedCount = 0;
+        state.records = state.records.map(r => {
+            if (r.startTime >= startOfDay && r.startTime <= endOfDay) {
+                updatedCount++;
+                const diffMs = r.endTime - r.startTime;
+                // 重新計算總工時（扣除新休息時間）
+                let totalMinutes = Math.floor(diffMs / 60000) - newBreak;
+                if (totalMinutes < 0) totalMinutes = 0;
+                
+                const hours = (totalMinutes / 60).toFixed(1);
+                
+                return {
+                    ...r,
+                    breakDuration: newBreak, // 統一存到 breakDuration
+                    breakMinutes: newBreak, // 舊欄位相容
+                    deductBreak: newBreak > 0,
+                    totalMinutes: totalMinutes,
+                    hours: hours
+                };
+            }
+            return r;
+        });
+
+        if (updatedCount > 0) {
+            saveData();
+            updateUI();
+            alert(`✅ 已成功更新 ${updatedCount} 筆紀錄的休息時間為 ${newBreak} 分鐘`);
+            // 不自動關閉，方便使用者查看更新後的狀態
+            elements.correctionDate.dispatchEvent(new Event('change'));
+        }
     });
 
     // 篩選相關
