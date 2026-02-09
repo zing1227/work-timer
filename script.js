@@ -879,15 +879,23 @@ function updateRecordsList() {
         const displayMinutes = record.minutes !== undefined ? record.minutes : Math.round(record.hours * 60);
         const durationStr = formatDuration(displayMinutes);
 
+        // 取得休息時間
+        let breakDuration = 0;
+        if (record.breakDuration !== undefined) {
+            breakDuration = record.breakDuration;
+        } else if (record.deductBreak) {
+            breakDuration = state.settings.breakTime;
+        }
+
         const item = document.createElement('div');
         item.className = 'record-item';
         item.innerHTML = `
             <div class="record-info">
                 <div class="record-date">${dateStr}</div>
                 <div class="record-time">
-                    ${timeStart} - ${timeEnd} 
-                    ${record.deductBreak ? '<span style="font-size:0.8em; color:#888;">(含休)</span>' : ''}
+                    ${timeStart} - ${timeEnd}
                 </div>
+                ${breakDuration > 0 ? `<div style="font-size: 0.85rem; color: #666;">休息: ${breakDuration} 分</div>` : ''}
             </div>
             <div class="record-hours">${durationStr}</div>
             <button class="record-delete" onclick="deleteRecord(${record.id})">&times;</button>
