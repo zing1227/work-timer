@@ -90,6 +90,7 @@ const elements = {
     bonusAmount: document.getElementById('bonusAmount'),
     bonusNote: document.getElementById('bonusNote'),
     addBonusBtn: document.getElementById('addBonus'),
+    clearBonusBtn: document.getElementById('clearBonus'),
     bonusSummary: document.getElementById('bonusSummary'),
     bonusList: document.getElementById('bonusList')
 };
@@ -174,6 +175,18 @@ function loadData() {
     const savedRecords = localStorage.getItem('workRecords');
     if (savedRecords) {
         state.records = JSON.parse(savedRecords);
+        state.records = state.records.map(r => {
+            let hours = typeof r.hours === 'string' ? parseFloat(r.hours) || 0 : (r.hours || 0);
+            let minutes = r.minutes;
+            if (minutes === undefined || isNaN(minutes)) {
+                minutes = Math.round(hours * 60);
+            }
+            return {
+                ...r,
+                hours,
+                minutes
+            };
+        });
     }
 
     const savedBonus = localStorage.getItem('bonusRecords');
@@ -504,19 +517,17 @@ function setupEventListeners() {
             if (r.startTime >= startOfDay && r.startTime <= endOfDay) {
                 updatedCount++;
                 const diffMs = r.endTime - r.startTime;
-                // 重新計算總工時（扣除新休息時間）
-                let totalMinutes = Math.floor(diffMs / 60000) - newBreak;
-                if (totalMinutes < 0) totalMinutes = 0;
-                
-                const hours = (totalMinutes / 60).toFixed(1);
+                let minutes = Math.floor(diffMs / 60000) - newBreak;
+                if (minutes < 0) minutes = 0;
+                const hours = parseFloat((minutes / 60).toFixed(2));
                 
                 return {
                     ...r,
-                    breakDuration: newBreak, // 統一存到 breakDuration
-                    breakMinutes: newBreak, // 舊欄位相容
+                    breakDuration: newBreak,
+                    breakMinutes: newBreak,
                     deductBreak: newBreak > 0,
-                    totalMinutes: totalMinutes,
-                    hours: hours
+                    minutes,
+                    hours
                 };
             }
             return r;
@@ -576,6 +587,19 @@ function setupEventListeners() {
             elements.bonusNote.value = '';
             saveData();
             updateUI();
+        });
+    }
+    if (elements.clearBonusBtn) {
+        elements.clearBonusBtn.addEventListener('click', () => {
+            if (!state.bonusRecords || state.bonusRecords.length === 0) return;
+            if (confirm('⚠️ 這將會刪除所有備忘錄與獎金紀錄且無法復原，確定要清空嗎？')) {
+                if (confirm('再次確認：真的要清空所有備忘錄嗎？')) {
+                    state.bonusRecords = [];
+                    saveData();
+                    updateUI();
+                    alert('所有備忘錄已清空');
+                }
+            }
         });
     }
 }
