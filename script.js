@@ -575,7 +575,7 @@ function setupEventListeners() {
             elements.bonusAmount.value = '';
             elements.bonusNote.value = '';
             saveData();
-            updateBonusUI();
+            updateUI();
         });
     }
 }
@@ -1041,7 +1041,7 @@ window.deleteBonus = function(id) {
     if (confirm('確定要刪除這筆備忘錄嗎？')) {
         state.bonusRecords = state.bonusRecords.filter(r => r.id !== id);
         saveData();
-        updateBonusUI();
+        updateUI();
     }
 };
 
