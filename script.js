@@ -2,14 +2,13 @@
 let state = {
     settings: {
         hourlyWage: 183,
-        breakTime: 60, // 分鐘
-        // Cloud Sync Settings
+        breakTime: 60,
         gClientId: '',
         gSheetId: ''
     },
     records: [],
-    currentSession: null, // { startTime: timestamp }
-    // Cloud State
+    bonusRecords: [],
+    currentSession: null,
     cloud: {
         tokenClient: null,
         accessToken: null,
@@ -75,6 +74,8 @@ const elements = {
     monthHours: document.getElementById('monthHours'),
     rangeHours: document.getElementById('rangeHours'),
     monthSalary: document.getElementById('monthSalary'),
+    bonusOnly: document.getElementById('bonusOnly'),
+    totalIncome: document.getElementById('totalIncome'),
 
     // 歷史紀錄
     filterStart: document.getElementById('filterStart'),
@@ -82,7 +83,15 @@ const elements = {
     clearFilterBtn: document.getElementById('clearFilter'),
     exportBtn: document.getElementById('exportBtn'),
     deleteAllBtn: document.getElementById('deleteAllBtn'),
-    recordsList: document.getElementById('recordsList')
+    recordsList: document.getElementById('recordsList'),
+
+    // 獎金備忘錄
+    bonusDate: document.getElementById('bonusDate'),
+    bonusAmount: document.getElementById('bonusAmount'),
+    bonusNote: document.getElementById('bonusNote'),
+    addBonusBtn: document.getElementById('addBonus'),
+    bonusSummary: document.getElementById('bonusSummary'),
+    bonusList: document.getElementById('bonusList')
 };
 
 // 初始化
@@ -95,6 +104,9 @@ function init() {
     // 設定預設日期為今天
     const today = new Date().toISOString().split('T')[0];
     elements.manualDate.value = today;
+    if (elements.bonusDate) {
+        elements.bonusDate.value = today;
+    }
     
     // 初始化補登日期的預設值並觸發查詢
     if (elements.correctionDate) {
@@ -147,7 +159,7 @@ function loadData() {
     const savedSettings = localStorage.getItem('workSettings');
     if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
-        state.settings = { ...state.settings, ...parsed }; // 合併新舊設定
+        state.settings = { ...state.settings, ...parsed };
         
         elements.hourlyWageInput.value = state.settings.hourlyWage;
         elements.breakTimeInput.value = state.settings.breakTime;
@@ -164,6 +176,11 @@ function loadData() {
         state.records = JSON.parse(savedRecords);
     }
 
+    const savedBonus = localStorage.getItem('bonusRecords');
+    if (savedBonus) {
+        state.bonusRecords = JSON.parse(savedBonus);
+    }
+
     const savedSession = localStorage.getItem('currentSession');
     if (savedSession) {
         state.currentSession = JSON.parse(savedSession);
@@ -174,6 +191,7 @@ function loadData() {
 function saveData() {
     localStorage.setItem('workSettings', JSON.stringify(state.settings));
     localStorage.setItem('workRecords', JSON.stringify(state.records));
+    localStorage.setItem('bonusRecords', JSON.stringify(state.bonusRecords));
     if (state.currentSession) {
         localStorage.setItem('currentSession', JSON.stringify(state.currentSession));
     } else {
@@ -295,6 +313,9 @@ function setupEventListeners() {
                     if (confirm(`確定要從文字代碼還原 ${data.records.length} 筆紀錄嗎？這將會覆蓋現有設定。`)) {
                         state.settings = { ...state.settings, ...data.settings };
                         state.records = data.records;
+                        if (data.bonusRecords && Array.isArray(data.bonusRecords)) {
+                            state.bonusRecords = data.bonusRecords;
+                        }
                         saveData();
                         updateUI();
                         loadData(); 
@@ -525,6 +546,38 @@ function setupEventListeners() {
 
     // 清空所有紀錄
     elements.deleteAllBtn.addEventListener('click', deleteAllRecords);
+
+    // 獎金備忘錄
+    if (elements.addBonusBtn) {
+        elements.addBonusBtn.addEventListener('click', () => {
+            const dateStr = elements.bonusDate.value;
+            const amount = parseFloat(elements.bonusAmount.value);
+            const note = elements.bonusNote.value.trim();
+
+            if (!dateStr) {
+                alert('請選擇日期');
+                return;
+            }
+            if (isNaN(amount) || amount <= 0) {
+                alert('請輸入有效的金額');
+                return;
+            }
+
+            const date = new Date(dateStr).getTime();
+            const bonus = {
+                id: Date.now(),
+                date: date,
+                amount: amount,
+                note: note || '未填寫備註'
+            };
+
+            state.bonusRecords.unshift(bonus);
+            elements.bonusAmount.value = '';
+            elements.bonusNote.value = '';
+            saveData();
+            updateBonusUI();
+        });
+    }
 }
 
 // 備份還原邏輯
@@ -532,6 +585,7 @@ function exportBackup() {
     const backupData = {
         settings: state.settings,
         records: state.records,
+        bonusRecords: state.bonusRecords,
         timestamp: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -555,6 +609,9 @@ function importBackup(e) {
                 if (confirm(`確定要還原 ${data.records.length} 筆紀錄嗎？這將會覆蓋現有設定。`)) {
                     state.settings = { ...state.settings, ...data.settings };
                     state.records = data.records;
+                    if (data.bonusRecords && Array.isArray(data.bonusRecords)) {
+                        state.bonusRecords = data.bonusRecords;
+                    }
                     saveData();
                     updateUI();
                     loadData(); // Reload input fields
@@ -776,6 +833,7 @@ function updateUI() {
     updateButtons();
     updateDashboard();
     updateRecordsList();
+    updateBonusUI();
 }
 
 // 更新按鈕狀態
@@ -831,6 +889,24 @@ function updateDashboard() {
     
     const salary = Math.round(monthTotal * state.settings.hourlyWage);
     elements.monthSalary.textContent = `$${salary.toLocaleString()}`;
+
+    let bonusTotal = 0;
+    if (state.bonusRecords && state.bonusRecords.length > 0) {
+        state.bonusRecords.forEach(b => {
+            const d = new Date(b.date);
+            if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+                bonusTotal += Number(b.amount) || 0;
+            }
+        });
+    }
+
+    const totalIncome = salary + bonusTotal;
+    if (elements.bonusOnly) {
+        elements.bonusOnly.textContent = `$${bonusTotal.toLocaleString()}`;
+    }
+    if (elements.totalIncome) {
+        elements.totalIncome.textContent = `$${totalIncome.toLocaleString()}`;
+    }
 }
 
 // 更新紀錄列表
@@ -908,12 +984,64 @@ function updateRecordsList() {
     elements.rangeHours.textContent = rangeHours.toFixed(1);
 }
 
+function updateBonusUI() {
+    const list = elements.bonusList;
+    const summary = elements.bonusSummary;
+    if (!list || !summary) return;
+
+    list.innerHTML = '';
+
+    if (!state.bonusRecords || state.bonusRecords.length === 0) {
+        list.innerHTML = '<div class="empty-state">尚無備忘錄</div>';
+        summary.textContent = '本月獎金合計：$0';
+        return;
+    }
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    let monthTotal = 0;
+
+    const records = [...state.bonusRecords].sort((a, b) => a.date - b.date);
+
+    records.forEach(record => {
+        const date = new Date(record.date);
+        const dateStr = date.toLocaleDateString('zh-TW');
+
+        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+            monthTotal += Number(record.amount) || 0;
+        }
+
+        const item = document.createElement('div');
+        item.className = 'bonus-item';
+        item.innerHTML = `
+            <div class="bonus-main">
+                <div class="bonus-date">${dateStr}</div>
+                <div class="bonus-note">${record.note}</div>
+            </div>
+            <div class="bonus-amount">+$${Number(record.amount).toLocaleString()}</div>
+            <button class="bonus-delete" onclick="deleteBonus(${record.id})">&times;</button>
+        `;
+        list.appendChild(item);
+    });
+
+    summary.textContent = `本月獎金合計：$${monthTotal.toLocaleString()}`;
+}
+
 // 刪除紀錄
 window.deleteRecord = function(id) {
     if (confirm('確定要刪除這筆紀錄嗎？')) {
         state.records = state.records.filter(r => r.id !== id);
         saveData();
         updateUI();
+    }
+};
+
+window.deleteBonus = function(id) {
+    if (confirm('確定要刪除這筆備忘錄嗎？')) {
+        state.bonusRecords = state.bonusRecords.filter(r => r.id !== id);
+        saveData();
+        updateBonusUI();
     }
 };
 

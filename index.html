@@ -142,6 +142,34 @@
             </div>
         </div>
 
+        <!-- 備忘錄 / 獎金紀錄 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>💡 備忘錄 / 獎金紀錄</h3>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>日期</label>
+                        <input type="date" id="bonusDate">
+                    </div>
+                    <div class="form-group">
+                        <label>金額 (TWD)</label>
+                        <input type="number" id="bonusAmount" min="0" placeholder="例如 5000">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>備註</label>
+                    <input type="text" id="bonusNote" placeholder="例如：Altis 成交獎金">
+                </div>
+                <button id="addBonus" class="btn-secondary">新增備忘錄</button>
+                <div class="bonus-summary" id="bonusSummary">本月獎金合計：$0</div>
+                <div class="bonus-list" id="bonusList">
+                    <div class="empty-state">尚無備忘錄</div>
+                </div>
+            </div>
+        </div>
+
         <!-- 統計看板 -->
         <div class="stats-container">
             <div class="stat-card">
@@ -157,8 +185,16 @@
                 <div class="value" id="rangeHours">0.0</div>
             </div>
             <div class="stat-card">
-                <h4>預估薪資</h4>
+                <h4>預估薪資（時薪）</h4>
                 <div class="value" id="monthSalary">$0</div>
+            </div>
+            <div class="stat-card">
+                <h4>獎金/其他</h4>
+                <div class="value" id="bonusOnly">$0</div>
+            </div>
+            <div class="stat-card">
+                <h4>本月總收入（時薪＋獎金）</h4>
+                <div class="value" id="totalIncome">$0</div>
             </div>
         </div>
 

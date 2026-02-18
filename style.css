@@ -368,6 +368,60 @@ button:active {
     padding: 20px;
 }
 
+.bonus-summary {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.bonus-list {
+    margin-top: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    border-top: 1px solid #eee;
+}
+
+.bonus-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f5f5f5;
+    font-size: 0.9rem;
+}
+
+.bonus-main {
+    flex: 1;
+}
+
+.bonus-date {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.bonus-note {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.bonus-amount {
+    font-weight: bold;
+    color: #e67e22;
+    margin-left: 10px;
+}
+
+.bonus-delete {
+    color: #999;
+    background: none;
+    padding: 5px;
+    margin-left: 10px;
+    font-size: 1.1rem;
+}
+
+.bonus-delete:hover {
+    color: var(--danger-color);
+}
+
 /* RWD */
 @media (max-width: 480px) {
     .stats-container {
