@@ -184,8 +184,11 @@
                 <div>
                     <span class="value" id="lastMonthHours">0.0</span><span style="font-size: 0.9rem; margin-left: 4px;"> 小時</span>
                 </div>
+                <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                    <span id="lastMonthSalaryDetail">$0</span> + <span id="lastMonthBonusDetail">$0</span> =
+                </div>
                 <div>
-                    <span class="value" id="lastMonthSalary" style="color: #e67e22;">\$0</span>
+                    <span class="value" id="lastMonthTotalIncome" style="color: #e67e22;">$0</span>
                 </div>
             </div>
             <div class="stat-card">
@@ -223,9 +226,17 @@
             <div class="history-header">
                 <h3>工時紀錄</h3>
                 <div class="filter-controls">
-                    <input type="date" id="filterStart">
-                    <span>至</span>
-                    <input type="date" id="filterEnd">
+                    <select id="filterRange" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; background: white;">
+                        <option value="all">完整記錄</option>
+                        <option value="thisMonth">本月紀錄</option>
+                        <option value="lastMonth">上個月紀錄</option>
+                        <option value="custom">自定義範圍</option>
+                    </select>
+                    <div id="customDateInputs" style="display: none; align-items: center; gap: 5px;">
+                        <input type="date" id="filterStart">
+                        <span>至</span>
+                        <input type="date" id="filterEnd">
+                    </div>
                     <button id="clearFilter" class="btn-small">重置</button>
                 </div>
             </div>

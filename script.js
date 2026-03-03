@@ -72,7 +72,9 @@ const elements = {
     // 統計
     todayHours: document.getElementById('todayHours'),
     lastMonthHours: document.getElementById('lastMonthHours'),
-    lastMonthSalary: document.getElementById('lastMonthSalary'),
+    lastMonthSalaryDetail: document.getElementById('lastMonthSalaryDetail'),
+    lastMonthBonusDetail: document.getElementById('lastMonthBonusDetail'),
+    lastMonthTotalIncome: document.getElementById('lastMonthTotalIncome'),
     monthHours: document.getElementById('monthHours'),
     rangeHours: document.getElementById('rangeHours'),
     rangeSalaryDetail: document.getElementById('rangeSalaryDetail'),
@@ -83,6 +85,8 @@ const elements = {
     totalIncome: document.getElementById('totalIncome'),
 
     // 歷史紀錄
+    filterRange: document.getElementById('filterRange'),
+    customDateInputs: document.getElementById('customDateInputs'),
     filterStart: document.getElementById('filterStart'),
     filterEnd: document.getElementById('filterEnd'),
     clearFilterBtn: document.getElementById('clearFilter'),
@@ -548,9 +552,27 @@ function setupEventListeners() {
     });
 
     // 篩選相關
+    if (elements.filterRange) {
+        elements.filterRange.addEventListener('change', (e) => {
+            const range = e.target.value;
+            if (range === 'custom') {
+                elements.customDateInputs.style.display = 'flex';
+            } else {
+                elements.customDateInputs.style.display = 'none';
+                elements.filterStart.value = '';
+                elements.filterEnd.value = '';
+            }
+            updateRecordsList();
+        });
+    }
+
     elements.filterStart.addEventListener('change', updateRecordsList);
     elements.filterEnd.addEventListener('change', updateRecordsList);
     elements.clearFilterBtn.addEventListener('click', () => {
+        if (elements.filterRange) {
+            elements.filterRange.value = 'all';
+            elements.customDateInputs.style.display = 'none';
+        }
         elements.filterStart.value = '';
         elements.filterEnd.value = '';
         updateRecordsList();
@@ -921,12 +943,29 @@ function updateDashboard() {
     elements.monthHours.textContent = monthTotal.toFixed(1);
     
     // 更新上個月統計
+    const lastMonthSalaryValue = Math.round(lastMonthTotal * state.settings.hourlyWage);
+    let lastMonthBonusTotal = 0;
+    if (state.bonusRecords && state.bonusRecords.length > 0) {
+        state.bonusRecords.forEach(b => {
+            const d = new Date(b.date);
+            if (d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear) {
+                lastMonthBonusTotal += Number(b.amount) || 0;
+            }
+        });
+    }
+    const lastMonthTotalIncomeValue = lastMonthSalaryValue + lastMonthBonusTotal;
+
     if (elements.lastMonthHours) {
         elements.lastMonthHours.textContent = lastMonthTotal.toFixed(1);
     }
-    if (elements.lastMonthSalary) {
-        const lastMonthSalaryValue = Math.round(lastMonthTotal * state.settings.hourlyWage);
-        elements.lastMonthSalary.textContent = `\$${lastMonthSalaryValue.toLocaleString()}`;
+    if (elements.lastMonthSalaryDetail) {
+        elements.lastMonthSalaryDetail.textContent = `\$${lastMonthSalaryValue.toLocaleString()}`;
+    }
+    if (elements.lastMonthBonusDetail) {
+        elements.lastMonthBonusDetail.textContent = `\$${lastMonthBonusTotal.toLocaleString()}`;
+    }
+    if (elements.lastMonthTotalIncome) {
+        elements.lastMonthTotalIncome.textContent = `\$${lastMonthTotalIncomeValue.toLocaleString()}`;
     }
     
     const salary = Math.round(monthTotal * state.settings.hourlyWage);
@@ -958,16 +997,29 @@ function updateRecordsList() {
 
     // 篩選
     let filteredRecords = state.records;
-    const startStr = elements.filterStart.value;
-    const endStr = elements.filterEnd.value;
+    const range = elements.filterRange ? elements.filterRange.value : 'all';
+    
+    if (range === 'thisMonth') {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        filteredRecords = filteredRecords.filter(r => r.startTime >= startOfMonth);
+    } else if (range === 'lastMonth') {
+        const now = new Date();
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).getTime();
+        filteredRecords = filteredRecords.filter(r => r.startTime >= startOfLastMonth && r.startTime <= endOfLastMonth);
+    } else if (range === 'custom') {
+        const startStr = elements.filterStart.value;
+        const endStr = elements.filterEnd.value;
 
-    if (startStr) {
-        const startDate = new Date(startStr).getTime();
-        filteredRecords = filteredRecords.filter(r => r.startTime >= startDate);
-    }
-    if (endStr) {
-        const endDate = new Date(endStr).setHours(23, 59, 59, 999);
-        filteredRecords = filteredRecords.filter(r => r.startTime <= endDate);
+        if (startStr) {
+            const startDate = new Date(startStr).getTime();
+            filteredRecords = filteredRecords.filter(r => r.startTime >= startDate);
+        }
+        if (endStr) {
+            const endDate = new Date(endStr).setHours(23, 59, 59, 999);
+            filteredRecords = filteredRecords.filter(r => r.startTime <= endDate);
+        }
     }
 
     // 排序：日期從小到大 (舊 -> 新)
