@@ -73,6 +73,7 @@ const elements = {
     todayHours: document.getElementById('todayHours'),
     monthHours: document.getElementById('monthHours'),
     rangeHours: document.getElementById('rangeHours'),
+    rangeTotalIncomeForCard: document.getElementById('rangeTotalIncomeForCard'),
     monthSalary: document.getElementById('monthSalary'),
     bonusOnly: document.getElementById('bonusOnly'),
     totalIncome: document.getElementById('totalIncome'),
@@ -1006,6 +1007,14 @@ function updateRecordsList() {
     // Update range hours display
     const rangeHours = parseFloat((rangeTotalMinutes / 60).toFixed(2));
     elements.rangeHours.textContent = rangeHours.toFixed(1);
+
+    // 計算區間總收入並更新卡片
+    const rangeSalary = Math.round(rangeHours * state.settings.hourlyWage);
+    const rangeBonus = calculateBonusTotal(filteredRecords.map(r => r.startTime));
+    const rangeTotalIncome = rangeSalary + rangeBonus;
+    if (elements.rangeTotalIncomeForCard) {
+        elements.rangeTotalIncomeForCard.textContent = `\$${rangeTotalIncome.toLocaleString()}`;
+    }
 }
 
 function updateBonusUI() {
@@ -1050,6 +1059,22 @@ function updateBonusUI() {
     });
 
     summary.textContent = `本月獎金合計：$${monthTotal.toLocaleString()}`;
+}
+
+function calculateBonusTotal(recordTimestamps) {
+    if (!state.bonusRecords || state.bonusRecords.length === 0) return 0;
+
+    const recordDates = recordTimestamps.map(ts => new Date(ts).toDateString());
+    const uniqueRecordDates = [...new Set(recordDates)];
+
+    let total = 0;
+    state.bonusRecords.forEach(bonus => {
+        const bonusDate = new Date(bonus.date).toDateString();
+        if (uniqueRecordDates.includes(bonusDate)) {
+            total += Number(bonus.amount) || 0;
+        }
+    });
+    return total;
 }
 
 // 刪除紀錄
