@@ -95,6 +95,7 @@ const elements = {
     recordsList: document.getElementById('recordsList'),
 
     // 獎金備忘錄
+    bonusFilterRange: document.getElementById('bonusFilterRange'),
     bonusDate: document.getElementById('bonusDate'),
     bonusAmount: document.getElementById('bonusAmount'),
     bonusNote: document.getElementById('bonusNote'),
@@ -586,6 +587,10 @@ function setupEventListeners() {
     elements.deleteAllBtn.addEventListener('click', deleteAllRecords);
 
     // 獎金備忘錄
+    if (elements.bonusFilterRange) {
+        elements.bonusFilterRange.addEventListener('change', updateBonusUI);
+    }
+
     if (elements.addBonusBtn) {
         elements.addBonusBtn.addEventListener('click', () => {
             const dateStr = elements.bonusDate.value;
@@ -1102,24 +1107,44 @@ function updateBonusUI() {
 
     if (!state.bonusRecords || state.bonusRecords.length === 0) {
         list.innerHTML = '<div class="empty-state">尚無備忘錄</div>';
-        summary.textContent = '本月獎金合計：$0';
+        summary.textContent = '獎金合計：$0';
         return;
     }
 
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    let monthTotal = 0;
+    const range = elements.bonusFilterRange ? elements.bonusFilterRange.value : 'all';
 
-    const records = [...state.bonusRecords].sort((a, b) => a.date - b.date);
+    let filteredBonus = [...state.bonusRecords];
+    let summaryText = '獎金合計';
 
-    records.forEach(record => {
+    if (range === 'thisMonth') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        filteredBonus = filteredBonus.filter(b => b.date >= startOfMonth);
+        summaryText = '本月獎金合計';
+    } else if (range === 'lastMonth') {
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).getTime();
+        filteredBonus = filteredBonus.filter(b => b.date >= startOfLastMonth && b.date <= endOfLastMonth);
+        summaryText = '上個月獎金合計';
+    } else {
+        summaryText = '總獎金合計';
+    }
+
+    let totalAmount = 0;
+    const sortedRecords = [...filteredBonus].sort((a, b) => a.date - b.date);
+
+    if (sortedRecords.length === 0) {
+        list.innerHTML = '<div class="empty-state">此範圍內無紀錄</div>';
+        summary.textContent = `${summaryText}：$0`;
+        return;
+    }
+
+    sortedRecords.forEach(record => {
         const date = new Date(record.date);
         const dateStr = date.toLocaleDateString('zh-TW');
-
-        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
-            monthTotal += Number(record.amount) || 0;
-        }
+        totalAmount += Number(record.amount) || 0;
 
         const item = document.createElement('div');
         item.className = 'bonus-item';
@@ -1134,7 +1159,7 @@ function updateBonusUI() {
         list.appendChild(item);
     });
 
-    summary.textContent = `本月獎金合計：$${monthTotal.toLocaleString()}`;
+    summary.textContent = `${summaryText}：$${totalAmount.toLocaleString()}`;
 }
 
 function calculateBonusTotal(recordTimestamps) {

@@ -144,8 +144,13 @@
 
         <!-- 備忘錄 / 獎金紀錄 -->
         <div class="card">
-            <div class="card-header">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <h3>💡 備忘錄 / 獎金紀錄</h3>
+                <select id="bonusFilterRange" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; background: white;">
+                    <option value="all">完整記錄</option>
+                    <option value="thisMonth">本月紀錄</option>
+                    <option value="lastMonth">上個月紀錄</option>
+                </select>
             </div>
             <div class="card-body">
                 <div class="form-row">
