@@ -1,7 +1,7 @@
 // 狀態管理
 let state = {
     settings: {
-        hourlyWage: 183,
+        hourlyWage: 200,
         breakTime: 60,
         gClientId: '',
         gSheetId: ''
@@ -71,8 +71,12 @@ const elements = {
 
     // 統計
     todayHours: document.getElementById('todayHours'),
+    lastMonthHours: document.getElementById('lastMonthHours'),
+    lastMonthSalary: document.getElementById('lastMonthSalary'),
     monthHours: document.getElementById('monthHours'),
     rangeHours: document.getElementById('rangeHours'),
+    rangeSalaryDetail: document.getElementById('rangeSalaryDetail'),
+    rangeBonusDetail: document.getElementById('rangeBonusDetail'),
     rangeTotalIncomeForCard: document.getElementById('rangeTotalIncomeForCard'),
     monthSalary: document.getElementById('monthSalary'),
     bonusOnly: document.getElementById('bonusOnly'),
@@ -881,20 +885,19 @@ function updateDashboard() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // 取得當前篩選範圍內的紀錄（如果沒有篩選，預設顯示全部或當月？）
-    // 這裡邏輯：
-    // 1. 今日時數：只看今天
-    // 2. 本月累積：只看這個月
-    // 3. 預估薪資：基於本月累積
+    // 計算上個月的年份和月份
+    let lastMonth = currentMonth - 1;
+    let lastMonthYear = currentYear;
+    if (lastMonth < 0) {
+        lastMonth = 11;
+        lastMonthYear = currentYear - 1;
+    }
 
     let todayTotal = 0;
     let monthTotal = 0;
+    let lastMonthTotal = 0;
 
-    // 若有篩選日期，看板也可以顯示篩選區間的總和？
-    // 根據需求： "統計看板：顯示當日時數、自選日期區間總時數、以及當月累計時數與總薪資。"
-    // 這裡我們簡化，顯示今日和本月，另外可以加一個「區間總計」如果篩選器有值。
-    
-    // 計算今日和本月
+    // 計算時數
     state.records.forEach(record => {
         const recordDate = new Date(record.startTime);
         
@@ -907,10 +910,24 @@ function updateDashboard() {
         if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
             monthTotal += record.hours;
         }
+
+        // 上個月
+        if (recordDate.getMonth() === lastMonth && recordDate.getFullYear() === lastMonthYear) {
+            lastMonthTotal += record.hours;
+        }
     });
 
     elements.todayHours.textContent = todayTotal.toFixed(1);
     elements.monthHours.textContent = monthTotal.toFixed(1);
+    
+    // 更新上個月統計
+    if (elements.lastMonthHours) {
+        elements.lastMonthHours.textContent = lastMonthTotal.toFixed(1);
+    }
+    if (elements.lastMonthSalary) {
+        const lastMonthSalaryValue = Math.round(lastMonthTotal * state.settings.hourlyWage);
+        elements.lastMonthSalary.textContent = `\$${lastMonthSalaryValue.toLocaleString()}`;
+    }
     
     const salary = Math.round(monthTotal * state.settings.hourlyWage);
     elements.monthSalary.textContent = `$${salary.toLocaleString()}`;
@@ -1012,6 +1029,13 @@ function updateRecordsList() {
     const rangeSalary = Math.round(rangeHours * state.settings.hourlyWage);
     const rangeBonus = calculateBonusTotal(filteredRecords.map(r => r.startTime));
     const rangeTotalIncome = rangeSalary + rangeBonus;
+    
+    if (elements.rangeSalaryDetail) {
+        elements.rangeSalaryDetail.textContent = `\$${rangeSalary.toLocaleString()}`;
+    }
+    if (elements.rangeBonusDetail) {
+        elements.rangeBonusDetail.textContent = `\$${rangeBonus.toLocaleString()}`;
+    }
     if (elements.rangeTotalIncomeForCard) {
         elements.rangeTotalIncomeForCard.textContent = `\$${rangeTotalIncome.toLocaleString()}`;
     }
