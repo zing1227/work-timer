@@ -181,8 +181,21 @@
         <!-- 統計看板 -->
         <div class="stats-container">
             <div class="stat-card">
+                <h4>本月總收入（時薪＋獎金）</h4>
+                <div class="value" id="totalIncome">$0</div>
+            </div>
+            <div class="stat-card">
                 <h4>今日時數</h4>
                 <div class="value" id="todayHours">0.0</div>
+            </div>
+            <div class="stat-card">
+
+                <h4>本月累積</h4>
+                <div class="value" id="monthHours">0.0</div>
+            </div>
+            <div class="stat-card">
+                <h4>預估薪資（時薪）</h4>
+                <div class="value" id="monthSalary">$0</div>
             </div>
             <div class="stat-card">
                 <h4>上個月統計</h4>
@@ -196,11 +209,7 @@
                     <span class="value" id="lastMonthTotalIncome" style="color: #e67e22;">$0</span>
                 </div>
             </div>
-            <div class="stat-card">
-                <h4>本月累積</h4>
-                <div class="value" id="monthHours">0.0</div>
-            </div>
-            <div class="stat-card">
+            <div class="stat-card">                
                 <h4>區間統計(小時)/總收入(薪資+獎金)</h4>
                 <div>
                     <span class="value" id="rangeHours">0.0</span><span style="font-size: 0.9rem; margin-left: 4px;"> 小時</span>
@@ -212,17 +221,10 @@
                     <span class="value" id="rangeTotalIncomeForCard" style="color: #27ae60;">$0</span>
                 </div>
             </div>
-            <div class="stat-card">
-                <h4>預估薪資（時薪）</h4>
-                <div class="value" id="monthSalary">$0</div>
-            </div>
+            
             <div class="stat-card">
                 <h4>獎金/其他</h4>
                 <div class="value" id="bonusOnly">$0</div>
-            </div>
-            <div class="stat-card">
-                <h4>本月總收入（時薪＋獎金）</h4>
-                <div class="value" id="totalIncome">$0</div>
             </div>
         </div>
 
