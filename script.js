@@ -102,52 +102,8 @@ const elements = {
     addBonusBtn: document.getElementById('addBonus'),
     clearBonusBtn: document.getElementById('clearBonus'),
     bonusSummary: document.getElementById('bonusSummary'),
-    bonusList: document.getElementById('bonusList'),
-
-    // 編輯紀錄
-    editRecordModal: document.getElementById('editRecordModal'),
-    closeEditRecordBtn: document.getElementById('closeEditRecord'),
-    editRecordDate: document.getElementById('editRecordDate'),
-    editRecordStart: document.getElementById('editRecordStart'),
-    editRecordEnd: document.getElementById('editRecordEnd'),
-    editRecordBreak: document.getElementById('editRecordBreak'),
-    editRecordBreakMinutes: document.getElementById('editRecordBreakMinutes'),
-    saveEditRecordBtn: document.getElementById('saveEditRecord'),
-
-    // 範圍刪除
-    quickDeleteRange: document.getElementById('quickDeleteRange'),
-    deleteRangeModal: document.getElementById('deleteRangeModal'),
-    closeDeleteRangeBtn: document.getElementById('closeDeleteRange'),
-    deleteRange: document.getElementById('deleteRange'),
-    deleteCustomDateInputs: document.getElementById('deleteCustomDateInputs'),
-    deleteStart: document.getElementById('deleteStart'),
-    deleteEnd: document.getElementById('deleteEnd'),
-    deleteRangeSummary: document.getElementById('deleteRangeSummary'),
-    confirmDeleteRangeBtn: document.getElementById('confirmDeleteRange')
+    bonusList: document.getElementById('bonusList')
 };
-
-let editingRecordId = null;
-
-function localDateValue(date = new Date()) {
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 10);
-}
-
-function createId() {
-    return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function formatLocalTime(value, withSeconds = false) {
-    const date = new Date(value);
-    const pad = number => String(number).padStart(2, '0');
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}${withSeconds ? `:${pad(date.getSeconds())}` : ''}`;
-}
-
-function formatLocalDate(value, withWeekday = false) {
-    const date = new Date(value);
-    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${withWeekday ? ` ${weekdays[date.getDay()]}` : ''}`;
-}
 
 // 初始化
 function init() {
@@ -157,7 +113,7 @@ function init() {
     updateUI();
     
     // 設定預設日期為今天
-    const today = localDateValue();
+    const today = new Date().toISOString().split('T')[0];
     elements.manualDate.value = today;
     if (elements.bonusDate) {
         elements.bonusDate.value = today;
@@ -211,16 +167,7 @@ async function initGapiClient() {
 
 // 載入資料
 function loadData() {
-    const readStoredJson = (key, fallback) => {
-        try {
-            const raw = localStorage.getItem(key);
-            return raw ? JSON.parse(raw) : fallback;
-        } catch (error) {
-            console.warn(`無法讀取 ${key}，已略過損壞資料。`, error);
-            return fallback;
-        }
-    };
-    const savedSettings = readStoredJson('workSettings', null);
+    const savedSettings = localStorage.getItem('workSettings');
     if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         state.settings = { ...state.settings, ...parsed };
@@ -235,9 +182,9 @@ function loadData() {
         if (elements.gSheetIdInput) elements.gSheetIdInput.value = state.settings.gSheetId || '';
     }
 
-    const savedRecords = readStoredJson('workRecords', []);
-    if (Array.isArray(savedRecords)) {
-        state.records = savedRecords;
+    const savedRecords = localStorage.getItem('workRecords');
+    if (savedRecords) {
+        state.records = JSON.parse(savedRecords);
         state.records = state.records.map(r => {
             let hours = typeof r.hours === 'string' ? parseFloat(r.hours) || 0 : (r.hours || 0);
             let minutes = r.minutes;
@@ -252,14 +199,14 @@ function loadData() {
         });
     }
 
-    const savedBonus = readStoredJson('bonusRecords', []);
-    if (Array.isArray(savedBonus)) {
-        state.bonusRecords = savedBonus;
+    const savedBonus = localStorage.getItem('bonusRecords');
+    if (savedBonus) {
+        state.bonusRecords = JSON.parse(savedBonus);
     }
 
-    const savedSession = readStoredJson('currentSession', null);
-    if (savedSession && Number.isFinite(Number(savedSession.startTime))) {
-        state.currentSession = savedSession;
+    const savedSession = localStorage.getItem('currentSession');
+    if (savedSession) {
+        state.currentSession = JSON.parse(savedSession);
     }
 }
 
@@ -318,7 +265,6 @@ function setupEventListeners() {
                 const backupData = {
                     settings: state.settings,
                     records: state.records,
-                    bonusRecords: state.bonusRecords,
                     timestamp: new Date().toISOString()
                 };
                 elements.backupTextarea.value = JSON.stringify(backupData, null, 2);
@@ -424,24 +370,6 @@ function setupEventListeners() {
     
     elements.gSyncBtn.addEventListener('click', syncWithCloud);
 
-    elements.closeEditRecordBtn.addEventListener('click', closeEditRecord);
-    elements.editRecordModal.addEventListener('click', (event) => {
-        if (event.target === elements.editRecordModal) closeEditRecord();
-    });
-    elements.editRecordBreak.addEventListener('change', () => {
-        elements.editRecordBreakMinutes.disabled = !elements.editRecordBreak.checked;
-    });
-    elements.saveEditRecordBtn.addEventListener('click', saveEditedRecord);
-
-    elements.closeDeleteRangeBtn.addEventListener('click', closeDeleteRange);
-    elements.deleteRangeModal.addEventListener('click', (event) => {
-        if (event.target === elements.deleteRangeModal) closeDeleteRange();
-    });
-    elements.deleteRange.addEventListener('change', updateDeleteRangePreview);
-    elements.deleteStart.addEventListener('change', updateDeleteRangePreview);
-    elements.deleteEnd.addEventListener('change', updateDeleteRangePreview);
-    elements.confirmDeleteRangeBtn.addEventListener('click', confirmDeleteRange);
-
     // 打卡相關
     elements.clockInBtn.addEventListener('click', () => {
         const now = new Date();
@@ -509,10 +437,11 @@ function setupEventListeners() {
         }
 
         const startTime = new Date(`${dateStr}T${startStr}`).getTime();
-        let endTime = new Date(`${dateStr}T${endStr}`).getTime();
+        const endTime = new Date(`${dateStr}T${endStr}`).getTime();
 
         if (endTime <= startTime) {
-            endTime += 24 * 60 * 60 * 1000;
+            alert('下班時間必須晚於上班時間');
+            return;
         }
 
         addRecord({
@@ -540,7 +469,7 @@ function setupEventListeners() {
         const form = elements.correctionForm;
         if (form.style.display === 'none') {
             form.style.display = 'block';
-            elements.correctionDate.value = localDateValue();
+            elements.correctionDate.value = new Date().toISOString().split('T')[0];
             elements.correctionDate.dispatchEvent(new Event('change'));
         } else {
             form.style.display = 'none';
@@ -654,8 +583,8 @@ function setupEventListeners() {
     // 匯出 Excel (CSV)
     elements.exportBtn.addEventListener('click', exportToCSV);
 
-    // 刪除範圍紀錄
-    elements.deleteAllBtn.addEventListener('click', openDeleteRange);
+    // 清空所有紀錄
+    elements.deleteAllBtn.addEventListener('click', deleteAllRecords);
 
     // 獎金備忘錄
     if (elements.bonusFilterRange) {
@@ -679,7 +608,7 @@ function setupEventListeners() {
 
             const date = new Date(dateStr).getTime();
             const bonus = {
-                id: createId(),
+                id: Date.now(),
                 date: date,
                 amount: amount,
                 note: note || '未填寫備註'
@@ -719,7 +648,7 @@ function exportBackup() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `work_backup_${localDateValue()}.json`;
+    link.download = `work_backup_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
 }
@@ -857,9 +786,9 @@ function exportToCSV() {
 
     sortedRecords.forEach(record => {
         const date = new Date(record.startTime);
-        const dateStr = formatLocalDate(date);
-        const timeStart = formatLocalTime(record.startTime, true);
-        const timeEnd = formatLocalTime(record.endTime, true);
+        const dateStr = date.toLocaleDateString('zh-TW');
+        const timeStart = new Date(record.startTime).toLocaleTimeString('zh-TW', { hour12: false });
+        const timeEnd = new Date(record.endTime).toLocaleTimeString('zh-TW', { hour12: false });
         
         // 取得休息時間
         let breakDuration = 0;
@@ -886,113 +815,29 @@ function exportToCSV() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `工時紀錄_${localDateValue()}.csv`);
+    link.setAttribute('download', `工時紀錄_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-// 刪除指定範圍的工時紀錄（獎金資料不受影響）
-function getDeleteRangeRecords() {
-    const range = elements.deleteRange.value;
-    const now = new Date();
-    let start = null;
-    let end = null;
-    if (range === 'thisMonth') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() - 1;
-    } else if (range === 'lastMonth') {
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
-        end = new Date(now.getFullYear(), now.getMonth(), 1).getTime() - 1;
-    } else if (range === 'custom') {
-        if (elements.deleteStart.value) start = new Date(`${elements.deleteStart.value}T00:00`).getTime();
-        if (elements.deleteEnd.value) end = new Date(`${elements.deleteEnd.value}T23:59:59.999`).getTime();
+// 清空所有紀錄
+function deleteAllRecords() {
+    if (state.records.length === 0) return;
+
+    if (confirm('⚠️ 警告：這將會刪除「所有」工時紀錄且無法復原！\n\n確定要清空嗎？')) {
+        // 二次確認
+        if (confirm('再次確認：真的要清空所有紀錄嗎？')) {
+            state.records = [];
+            saveData();
+            updateUI();
+            alert('所有紀錄已清空');
+        }
     }
-    return state.records.filter(record =>
-        (start === null || record.startTime >= start) && (end === null || record.startTime <= end)
-    );
-}
-
-function openDeleteRange() {
-    if (state.records.length === 0) {
-        alert('目前沒有工時紀錄可刪除');
-        return;
-    }
-    elements.deleteRange.value = elements.quickDeleteRange.value;
-    elements.deleteStart.value = elements.filterStart.value;
-    elements.deleteEnd.value = elements.filterEnd.value;
-    elements.deleteRangeModal.classList.remove('hidden');
-    updateDeleteRangePreview();
-}
-
-function closeDeleteRange() {
-    elements.deleteRangeModal.classList.add('hidden');
-}
-
-function updateDeleteRangePreview() {
-    const isCustom = elements.deleteRange.value === 'custom';
-    elements.deleteCustomDateInputs.classList.toggle('hidden', !isCustom);
-    const count = getDeleteRangeRecords().length;
-    elements.deleteRangeSummary.textContent = `將刪除 ${count} 筆工時紀錄；獎金備忘錄不會受影響。`;
-    elements.confirmDeleteRangeBtn.disabled = count === 0;
-}
-
-function confirmDeleteRange() {
-    const recordsToDelete = getDeleteRangeRecords();
-    if (recordsToDelete.length === 0) return;
-    const ids = new Set(recordsToDelete.map(record => String(record.id)));
-    if (!confirm(`確定要刪除 ${recordsToDelete.length} 筆工時紀錄嗎？此操作無法復原。`)) return;
-    state.records = state.records.filter(record => !ids.has(String(record.id)));
-    saveData();
-    closeDeleteRange();
-    updateUI();
-    alert(`已刪除 ${recordsToDelete.length} 筆工時紀錄`);
 }
 
 // 新增紀錄邏輯
-function openEditRecord(id) {
-    const record = state.records.find(r => String(r.id) === String(id));
-    if (!record) return;
-    editingRecordId = record.id;
-    const start = new Date(record.startTime);
-    const end = new Date(record.endTime);
-    elements.editRecordDate.value = localDateValue(start);
-    elements.editRecordStart.value = start.toTimeString().slice(0, 5);
-    elements.editRecordEnd.value = end.toTimeString().slice(0, 5);
-    const breakDuration = Number(record.breakDuration) || 0;
-    elements.editRecordBreak.checked = breakDuration > 0;
-    elements.editRecordBreakMinutes.value = breakDuration || state.settings.breakTime;
-    elements.editRecordBreakMinutes.disabled = !elements.editRecordBreak.checked;
-    elements.editRecordModal.classList.remove('hidden');
-}
-
-function closeEditRecord() {
-    editingRecordId = null;
-    elements.editRecordModal.classList.add('hidden');
-}
-
-function saveEditedRecord() {
-    const date = elements.editRecordDate.value;
-    const startValue = elements.editRecordStart.value;
-    const endValue = elements.editRecordEnd.value;
-    if (!date || !startValue || !endValue || editingRecordId === null) {
-        alert('請完整填寫日期與時間');
-        return;
-    }
-    const startTime = new Date(`${date}T${startValue}`).getTime();
-    let endTime = new Date(`${date}T${endValue}`).getTime();
-    if (endTime <= startTime) endTime += 24 * 60 * 60 * 1000;
-    const breakDuration = elements.editRecordBreak.checked ? Math.max(0, Number(elements.editRecordBreakMinutes.value) || 0) : 0;
-    const totalMinutes = Math.max(0, Math.floor((endTime - startTime) / 60000) - breakDuration);
-    const record = state.records.find(r => String(r.id) === String(editingRecordId));
-    if (!record) return;
-    Object.assign(record, { startTime, endTime, breakDuration, deductBreak: breakDuration > 0, minutes: totalMinutes, hours: Number((totalMinutes / 60).toFixed(2)) });
-    saveData();
-    closeEditRecord();
-    updateUI();
-}
-
 function addRecord(data) {
     const diffMs = data.endTime - data.startTime;
     let totalMinutes = Math.floor(diffMs / 60000);
@@ -1011,7 +856,7 @@ function addRecord(data) {
     const hours = parseFloat((totalMinutes / 60).toFixed(2));
     
     const record = {
-        id: createId(),
+        id: Date.now(),
         startTime: data.startTime,
         endTime: data.endTime,
         deductBreak: breakTime > 0, // Ensure consistency
@@ -1027,8 +872,13 @@ function addRecord(data) {
 function startClock() {
     function update() {
         const now = new Date();
-        elements.clockDisplay.textContent = formatLocalTime(now, true);
-        elements.dateDisplay.textContent = formatLocalDate(now, true);
+        elements.clockDisplay.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+        elements.dateDisplay.textContent = now.toLocaleDateString('zh-TW', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric', 
+            weekday: 'long' 
+        });
     }
     update();
     setInterval(update, 1000);
@@ -1047,7 +897,7 @@ function updateButtons() {
     if (state.currentSession) {
         elements.clockInBtn.disabled = true;
         elements.clockOutBtn.disabled = false;
-        elements.clockInBtn.textContent = `工作中 (${formatLocalTime(state.currentSession.startTime)} 開始)`;
+        elements.clockInBtn.textContent = `工作中 (${new Date(state.currentSession.startTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'})} 開始)`;
     } else {
         elements.clockInBtn.disabled = false;
         elements.clockOutBtn.disabled = true;
@@ -1196,9 +1046,9 @@ function updateRecordsList() {
         rangeTotalMinutes += rMinutes;
 
         const date = new Date(record.startTime);
-        const dateStr = formatLocalDate(date);
-        const timeStart = formatLocalTime(record.startTime);
-        const timeEnd = formatLocalTime(record.endTime);
+        const dateStr = date.toLocaleDateString('zh-TW');
+        const timeStart = new Date(record.startTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        const timeEnd = new Date(record.endTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         
         // Use stored minutes if available, otherwise calculate from hours (backward compatibility)
         const displayMinutes = record.minutes !== undefined ? record.minutes : Math.round(record.hours * 60);
@@ -1223,18 +1073,8 @@ function updateRecordsList() {
                 ${breakDuration > 0 ? `<div style="font-size: 0.85rem; color: #666;">休息: ${breakDuration} 分</div>` : ''}
             </div>
             <div class="record-hours">${durationStr}</div>
-            <div class="record-actions"></div>
+            <button class="record-delete" onclick="deleteRecord(${record.id})">&times;</button>
         `;
-        const actions = item.querySelector('.record-actions');
-        const editButton = document.createElement('button');
-        editButton.className = 'record-edit';
-        editButton.textContent = '編輯';
-        editButton.addEventListener('click', () => openEditRecord(record.id));
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'record-delete';
-        deleteButton.innerHTML = '&times;';
-        deleteButton.addEventListener('click', () => deleteRecord(record.id));
-        actions.append(editButton, deleteButton);
         list.appendChild(item);
     });
 
@@ -1303,7 +1143,7 @@ function updateBonusUI() {
 
     sortedRecords.forEach(record => {
         const date = new Date(record.date);
-        const dateStr = formatLocalDate(date);
+        const dateStr = date.toLocaleDateString('zh-TW');
         totalAmount += Number(record.amount) || 0;
 
         const item = document.createElement('div');
@@ -1311,16 +1151,11 @@ function updateBonusUI() {
         item.innerHTML = `
             <div class="bonus-main">
                 <div class="bonus-date">${dateStr}</div>
-                <div class="bonus-note"></div>
+                <div class="bonus-note">${record.note}</div>
             </div>
             <div class="bonus-amount">+$${Number(record.amount).toLocaleString()}</div>
+            <button class="bonus-delete" onclick="deleteBonus(${record.id})">&times;</button>
         `;
-        item.querySelector('.bonus-note').textContent = record.note || '';
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'bonus-delete';
-        deleteButton.innerHTML = '&times;';
-        deleteButton.addEventListener('click', () => deleteBonus(record.id));
-        item.appendChild(deleteButton);
         list.appendChild(item);
     });
 
@@ -1344,21 +1179,21 @@ function calculateBonusTotal(recordTimestamps) {
 }
 
 // 刪除紀錄
-function deleteRecord(id) {
+window.deleteRecord = function(id) {
     if (confirm('確定要刪除這筆紀錄嗎？')) {
-        state.records = state.records.filter(r => String(r.id) !== String(id));
+        state.records = state.records.filter(r => r.id !== id);
         saveData();
         updateUI();
     }
-}
+};
 
-function deleteBonus(id) {
+window.deleteBonus = function(id) {
     if (confirm('確定要刪除這筆備忘錄嗎？')) {
-        state.bonusRecords = state.bonusRecords.filter(r => String(r.id) !== String(id));
+        state.bonusRecords = state.bonusRecords.filter(r => r.id !== id);
         saveData();
         updateUI();
     }
-}
+};
 
 // 輔助函式：格式化分鐘數為 "X小時Y分"
 function formatDuration(minutes) {
