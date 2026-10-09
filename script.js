@@ -238,9 +238,9 @@ function loadData() {
         }
     };
     const savedSettings = readStoredJson('workSettings', null);
-    if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        state.settings = { ...state.settings, ...parsed };
+    if (savedSettings && typeof savedSettings === 'object' && !Array.isArray(savedSettings)) {
+        // readStoredJson 已完成 JSON.parse；不可再次解析物件，否則會產生 "[object Object] is not valid JSON"。
+        state.settings = { ...state.settings, ...savedSettings };
         
         elements.hourlyWageInput.value = state.settings.hourlyWage;
         elements.breakTimeInput.value = state.settings.breakTime;
@@ -415,10 +415,18 @@ function setupEventListeners() {
                 return;
             }
             try {
-                const data = JSON.parse(text);
-                if (data.records && Array.isArray(data.records)) {
+                // 支援直接貼上 JSON、被 ```json 包住的文字，以及舊版僅含 records 陣列的備份。
+                const normalizedText = text
+                    .replace(/^```(?:json)?\s*/i, '')
+                    .replace(/\s*```$/, '')
+                    .trim();
+                const parsed = JSON.parse(normalizedText);
+                const data = Array.isArray(parsed) ? { records: parsed } : parsed;
+                if (data && Array.isArray(data.records)) {
                     if (confirm(`確定要從文字代碼還原 ${data.records.length} 筆紀錄嗎？這將會覆蓋現有設定。`)) {
-                        state.settings = { ...state.settings, ...data.settings };
+                        if (data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings)) {
+                            state.settings = { ...state.settings, ...data.settings };
+                        }
                         state.records = data.records;
                         if (data.bonusRecords && Array.isArray(data.bonusRecords)) {
                             state.bonusRecords = data.bonusRecords;
@@ -430,10 +438,10 @@ function setupEventListeners() {
                         elements.textBackupArea.style.display = 'none';
                     }
                 } else {
-                    alert('代碼格式錯誤');
+                    alert('代碼格式錯誤：找不到工時紀錄（records）');
                 }
             } catch (err) {
-                alert('無效的 JSON 代碼');
+                alert('無效的備份格式：請貼上完整 JSON 內容。');
             }
         });
     }
