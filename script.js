@@ -137,6 +137,18 @@ function createId() {
     return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function formatLocalTime(value, withSeconds = false) {
+    const date = new Date(value);
+    const pad = number => String(number).padStart(2, '0');
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}${withSeconds ? `:${pad(date.getSeconds())}` : ''}`;
+}
+
+function formatLocalDate(value, withWeekday = false) {
+    const date = new Date(value);
+    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${withWeekday ? ` ${weekdays[date.getDay()]}` : ''}`;
+}
+
 // 初始化
 function init() {
     loadData();
@@ -845,9 +857,9 @@ function exportToCSV() {
 
     sortedRecords.forEach(record => {
         const date = new Date(record.startTime);
-        const dateStr = date.toLocaleDateString('zh-TW');
-        const timeStart = new Date(record.startTime).toLocaleTimeString('zh-TW', { hour12: false });
-        const timeEnd = new Date(record.endTime).toLocaleTimeString('zh-TW', { hour12: false });
+        const dateStr = formatLocalDate(date);
+        const timeStart = formatLocalTime(record.startTime, true);
+        const timeEnd = formatLocalTime(record.endTime, true);
         
         // 取得休息時間
         let breakDuration = 0;
@@ -1015,13 +1027,8 @@ function addRecord(data) {
 function startClock() {
     function update() {
         const now = new Date();
-        elements.clockDisplay.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
-        elements.dateDisplay.textContent = now.toLocaleDateString('zh-TW', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric', 
-            weekday: 'long' 
-        });
+        elements.clockDisplay.textContent = formatLocalTime(now, true);
+        elements.dateDisplay.textContent = formatLocalDate(now, true);
     }
     update();
     setInterval(update, 1000);
@@ -1040,7 +1047,7 @@ function updateButtons() {
     if (state.currentSession) {
         elements.clockInBtn.disabled = true;
         elements.clockOutBtn.disabled = false;
-        elements.clockInBtn.textContent = `工作中 (${new Date(state.currentSession.startTime).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'})} 開始)`;
+        elements.clockInBtn.textContent = `工作中 (${formatLocalTime(state.currentSession.startTime)} 開始)`;
     } else {
         elements.clockInBtn.disabled = false;
         elements.clockOutBtn.disabled = true;
@@ -1189,9 +1196,9 @@ function updateRecordsList() {
         rangeTotalMinutes += rMinutes;
 
         const date = new Date(record.startTime);
-        const dateStr = date.toLocaleDateString('zh-TW');
-        const timeStart = new Date(record.startTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-        const timeEnd = new Date(record.endTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = formatLocalDate(date);
+        const timeStart = formatLocalTime(record.startTime);
+        const timeEnd = formatLocalTime(record.endTime);
         
         // Use stored minutes if available, otherwise calculate from hours (backward compatibility)
         const displayMinutes = record.minutes !== undefined ? record.minutes : Math.round(record.hours * 60);
@@ -1296,7 +1303,7 @@ function updateBonusUI() {
 
     sortedRecords.forEach(record => {
         const date = new Date(record.date);
-        const dateStr = date.toLocaleDateString('zh-TW');
+        const dateStr = formatLocalDate(date);
         totalAmount += Number(record.amount) || 0;
 
         const item = document.createElement('div');
