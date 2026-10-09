@@ -250,13 +250,67 @@
             
             <div class="action-bar">
                 <button id="exportBtn" class="btn-outline">📥 匯出 Excel</button>
-                <button id="deleteAllBtn" class="btn-danger-outline">🗑️ 清空所有紀錄</button>
+                <select id="quickDeleteRange" aria-label="選擇刪除範圍">
+                    <option value="thisMonth">刪除：本月</option>
+                    <option value="lastMonth">刪除：上月</option>
+                    <option value="custom">刪除：自訂範圍</option>
+                    <option value="all">刪除：全部</option>
+                </select>
+                <button id="deleteAllBtn" class="btn-danger-outline">🗑️ 刪除範圍紀錄</button>
             </div>
             
             <div class="records-list" id="recordsList">
                 <!-- 紀錄項目將由 JS 生成 -->
                 <div class="empty-state">尚無紀錄</div>
             </div>
+        </div>
+    </div>
+
+    <!-- 編輯工時紀錄 -->
+    <div id="editRecordModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editRecordTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editRecordTitle">編輯工時紀錄</h3>
+                <button id="closeEditRecord" class="modal-close" aria-label="關閉">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="editRecordDate">日期</label><input type="date" id="editRecordDate"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label for="editRecordStart">上班時間</label><input type="time" id="editRecordStart"></div>
+                <div class="form-group"><label for="editRecordEnd">下班時間</label><input type="time" id="editRecordEnd"></div>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="editRecordBreak"><label for="editRecordBreak">扣除休息</label>
+                <input type="number" id="editRecordBreakMinutes" min="0" value="0" style="width: 70px; margin: 0 5px;"><span>分鐘</span>
+            </div>
+            <p class="hint-text">下班時間早於或等於上班時間時，會自動視為跨日班。</p>
+            <button id="saveEditRecord" class="btn-primary full-width">儲存變更</button>
+        </div>
+    </div>
+
+    <!-- 刪除範圍紀錄 -->
+    <div id="deleteRangeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="deleteRangeTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="deleteRangeTitle">刪除工時紀錄</h3>
+                <button id="closeDeleteRange" class="modal-close" aria-label="關閉">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="deleteRange">刪除範圍</label>
+                <select id="deleteRange">
+                    <option value="thisMonth">本月紀錄</option>
+                    <option value="lastMonth">上個月紀錄</option>
+                    <option value="custom">自訂日期範圍</option>
+                    <option value="all">所有工時紀錄</option>
+                </select>
+            </div>
+            <div id="deleteCustomDateInputs" class="form-row hidden">
+                <div class="form-group"><label for="deleteStart">開始日期</label><input type="date" id="deleteStart"></div>
+                <div class="form-group"><label for="deleteEnd">結束日期</label><input type="date" id="deleteEnd"></div>
+            </div>
+            <p id="deleteRangeSummary" class="hint-text">將刪除 0 筆工時紀錄；獎金備忘錄不會受影響。</p>
+            <button id="confirmDeleteRange" class="btn-danger-outline full-width">刪除這些紀錄</button>
         </div>
     </div>
 
