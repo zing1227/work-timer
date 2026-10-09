@@ -155,14 +155,6 @@ function formatLocalDate(value, withWeekday = false) {
 // 初始化
 function reportStartupError(stage, error) {
     console.error(`初始化失敗：${stage}`, error);
-    let notice = document.getElementById('appStartupNotice');
-    if (!notice) {
-        notice = document.createElement('div');
-        notice.id = 'appStartupNotice';
-        notice.style.cssText = 'margin:0 0 14px;padding:10px 12px;border-radius:8px;background:#fff3cd;color:#7a5200;font-size:.85rem;line-height:1.5;';
-        document.querySelector('.container')?.prepend(notice);
-    }
-    notice.textContent = `部分功能載入異常（${stage}），已啟用基本模式：${error.message || '未知錯誤'}`;
 }
 
 function runStartupStep(stage, callback) {
@@ -240,7 +232,8 @@ function loadData() {
             const raw = localStorage.getItem(key);
             return raw ? JSON.parse(raw) : fallback;
         } catch (error) {
-            console.warn(`無法讀取 ${key}，已略過損壞資料。`, error);
+            // 更新時不得移除、覆寫或遷移使用者本機資料；僅在本次執行中採用安全預設值。
+            console.warn(`無法讀取 ${key}，已在本次執行中使用安全預設值；原始資料未被變更。`, error);
             return fallback;
         }
     };
